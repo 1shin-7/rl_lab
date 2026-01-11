@@ -112,12 +112,12 @@ wheels = [
 ]
 
 [[package]]
-name = "dqn-cartpole"
+name = "drl-lab"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
-    { name = "gymnasium", extra = ["classic-control"] },
+    { name = "gymnasium", extra = ["classic-control", "toy-text"] },
     { name = "loguru" },
     { name = "matplotlib" },
     { name = "numpy" },
@@ -127,7 +127,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.3.1" },
-    { name = "gymnasium", extras = ["classic-control"], specifier = ">=1.2.3" },
+    { name = "gymnasium", extras = ["classic-control", "toy-text"], specifier = ">=1.2.3" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "numpy", specifier = ">=2.4.1" },
@@ -219,6 +219,9 @@ wheels = [
 
 [package.optional-dependencies]
 classic-control = [
+    { name = "pygame" },
+]
+toy-text = [
     { name = "pygame" },
 ]
 

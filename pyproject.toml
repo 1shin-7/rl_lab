@@ -1,12 +1,12 @@
 [project]
-name = "dqn_cartpole"
+name = "drl_lab"
 version = "0.1.0"
-description = "Add your description here"
+description = "Deep Reinforcement Learning Lab"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "click>=8.3.1",
-    "gymnasium[classic-control]>=1.2.3",
+    "gymnasium[classic-control,toy-text]>=1.2.3",
     "loguru>=0.7.3",
     "matplotlib>=3.10.8",
     "numpy>=2.4.1",
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.scripts]
-dqn = "dqn_cartpole.cli:cli"
+lab = "drl_lab.cli.main:cli"
 
 [tool.uv]
 package = true
@@ -24,4 +24,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/dqn_cartpole"]
+packages = ["src/drl_lab"]

@@ -1,9 +1,9 @@
-import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
 from loguru import logger
 from .config import Config
 from .agent import DQNAgent
+from .tasks import get_task
 
 def plot_rewards(rewards, moving_avg, save_path):
     plt.figure(figsize=(10, 5))
@@ -11,39 +11,44 @@ def plot_rewards(rewards, moving_avg, save_path):
     plt.plot(moving_avg, label='Moving Average (100 eps)', linewidth=2)
     plt.xlabel('Episode')
     plt.ylabel('Reward')
-    plt.title('DQN Training: CartPole-v0')
+    plt.title('DQN Training')
     plt.legend()
     plt.grid(True)
     plt.savefig(save_path)
     plt.close()
     logger.info(f"Training plot saved to {save_path}")
 
-def train(config: Config):
-    env = gym.make(config.env_name)
-    state_size = int(env.observation_space.shape[0])
-    action_size = int(env.action_space.n)
+def train(task_name: str, output_path: str, episodes: int):
+    # Load default config and override
+    config = Config()
+    config.episodes = episodes
+    if output_path:
+        config.model_path = output_path
+        # Derive plot path from model path
+        config.plot_path = output_path.replace(".pth", ".png")
     
-    agent = DQNAgent(state_size, action_size, config)
+    task = get_task(task_name)
+    env = task.make_env()
     
-    logger.info(f"Starting training on {config.env_name} for {config.episodes} episodes.")
-    logger.info(f"Hyperparameters: Gamma={config.gamma}, LR={config.learning_rate}, Batch={config.batch_size}")
-
+    agent = DQNAgent(task.state_size, task.action_size, config)
+    
+    logger.info(f"Starting training on {task.name} for {config.episodes} episodes.")
+    
     rewards_history = []
     moving_avg_history = []
-    best_reward = 0
+    best_reward = -float('inf')
 
     for e in range(config.episodes):
         state, info = env.reset()
+        state = task.preprocess_state(state)
         total_reward = 0
         done = False
         
         while not done:
             action = agent.act(state, training=True)
             next_state, reward, terminated, truncated, _ = env.step(action)
+            next_state = task.preprocess_state(next_state)
             done = terminated or truncated
-            
-            # Custom reward shaping can go here if needed, but CartPole default is fine for simple pass.
-            # Usually reward is +1 per step.
             
             agent.remember(state, action, reward, next_state, done)
             state = next_state
@@ -59,7 +64,8 @@ def train(config: Config):
         avg_reward = np.mean(rewards_history[-100:])
         moving_avg_history.append(avg_reward)
         
-        logger.info(f"Episode: {e+1}/{config.episodes} | Score: {total_reward} | Avg: {avg_reward:.2f} | Epsilon: {agent.epsilon:.2f}")
+        if (e+1) % 10 == 0:
+            logger.info(f"Episode: {e+1}/{config.episodes} | Score: {total_reward} | Avg: {avg_reward:.2f} | Epsilon: {agent.epsilon:.2f}")
 
         if avg_reward > best_reward:
             best_reward = avg_reward
@@ -67,6 +73,5 @@ def train(config: Config):
             
     env.close()
     
-    # Save final plot
     plot_rewards(rewards_history, moving_avg_history, config.plot_path)
-    logger.success("Training completed.")
+    logger.success(f"Training completed. Model saved to {config.model_path}")

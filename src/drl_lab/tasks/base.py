@@ -28,3 +28,9 @@ class BaseTask(ABC):
         Default implementation returns the state as is.
         """
         return state
+
+    def render_tui(self, state, info=None):
+        """
+        Returns a renderable (string, Rich object, etc.) for the TUI.
+        """
+        return f"State: {state}\nInfo: {info}"

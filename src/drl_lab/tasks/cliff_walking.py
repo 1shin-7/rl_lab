@@ -1,9 +1,101 @@
 import gymnasium as gym
 import numpy as np
-from rich.table import Table
-from rich.text import Text
-from rich import box
+from textual.widgets import Placeholder
+from textual.containers import Container
 from .base import BaseTask
+
+class CliffWalkingWidget(Container):
+    CSS = """
+    CliffWalkingWidget {
+        layout: grid;
+        grid-size: 12 4;
+        grid-gutter: 1;
+        width: auto;
+        height: auto;
+        border: solid $accent;
+        align: center middle;
+        background: $surface;
+    }
+
+    Placeholder {
+        width: 7;  /* Approx square-ish in terminal (2:1 font ratio typically) */
+        height: 3; 
+        background: $surface-lighten-1;
+        color: $text;
+    }
+
+    /* State modifiers */
+    .start {
+        background: $warning;
+        color: black;
+    }
+    
+    .goal {
+        background: $success;
+        color: black;
+    }
+    
+    .cliff {
+        background: $error;
+    }
+    
+    .ground {
+        background: white;
+        color: black;
+    }
+
+    .agent {
+        background: blue;
+        color: white;
+    }
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.placeholders = []
+        self.agent_idx = -1
+        self.total_cells = 48 
+
+    def compose(self):
+        for i in range(self.total_cells):
+            classes = ""
+            
+            r = i // 12
+            c = i % 12
+            
+            if i == 36: # Start
+                classes = "start"
+            elif i == 47: # Goal
+                classes = "goal"
+            elif r == 3 and 1 <= c <= 10: # Cliff
+                classes = "cliff"
+            else:
+                classes = "ground"
+            
+            # Label is the index
+            p = Placeholder(label=str(i), id=f"p-{i}", classes=classes)
+            self.placeholders.append(p)
+            yield p
+
+    def update_state(self, state, info=None):
+        idx = -1
+        if isinstance(state, (np.ndarray, list)):
+            if len(state) == 48: 
+                idx = np.argmax(state)
+            else:
+                idx = int(state[0]) if len(state) > 0 else 0
+        else:
+            idx = int(state)
+            
+        if idx != self.agent_idx:
+            # Clear old agent class
+            if self.agent_idx != -1 and 0 <= self.agent_idx < self.total_cells:
+                self.placeholders[self.agent_idx].remove_class("agent")
+
+            # Set new agent class
+            self.agent_idx = idx
+            if 0 <= idx < self.total_cells:
+                self.placeholders[idx].add_class("agent")
 
 class CliffWalkingTask(BaseTask):
     def __init__(self):
@@ -33,50 +125,9 @@ class CliffWalkingTask(BaseTask):
         if 0 <= state < self._n_states:
             one_hot[state] = 1.0
         return one_hot
+    
+    def create_visual_widget(self):
+        return CliffWalkingWidget()
 
     def render_tui(self, state, info=None):
-        # Determine agent position
-        agent_idx = -1
-        if isinstance(state, (np.ndarray, list)):
-            if len(state) == self._n_states: # One-hot
-                agent_idx = np.argmax(state)
-            else:
-                agent_idx = int(state[0]) if len(state) > 0 else 0
-        else:
-             agent_idx = int(state)
-             
-        rows = 4
-        cols = 12
-        
-        # Create a table for grid layout
-        table = Table(show_header=False, show_edge=True, box=box.SQUARE, padding=0)
-        for _ in range(cols):
-            table.add_column(width=4, justify="center") # Width 4 for "sqaure-ish" look with text
-
-        for r in range(rows):
-            row_cells = []
-            for c in range(cols):
-                idx = r * cols + c
-                
-                # Determine cell type
-                style = "on black"
-                char = "    "
-                
-                if idx == 36: # Start
-                    style = "on yellow"
-                elif idx == 47: # Goal
-                    style = "on green"
-                elif r == 3 and 1 <= c <= 10: # Cliff
-                    style = "on red"
-                else:
-                    style = "on white" # Ground
-                
-                if idx == agent_idx:
-                    style = "on blue"
-                    char = " 馃槆 " # Agent icon
-
-                row_cells.append(Text(char, style=style))
-            
-            table.add_row(*row_cells)
-            
-        return table
+        return str(state)

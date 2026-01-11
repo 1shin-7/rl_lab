@@ -34,3 +34,11 @@ class BaseTask(ABC):
         Returns a renderable (string, Rich object, etc.) for the TUI.
         """
         return f"State: {state}\nInfo: {info}"
+
+    def create_visual_widget(self):
+        """
+        Optional: Returns a Textual Widget instance for more complex visualizations.
+        If implemented, the App will use this widget and call its `update_state(state, info)` method
+        instead of `render_tui`.
+        """
+        return None

@@ -104,10 +104,6 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-
-        # Decay epsilon
-        if self.epsilon > self.config.epsilon_min:
-            self.epsilon *= self.config.epsilon_decay
             
         return loss.item()
 

@@ -11,7 +11,7 @@ def cli(debug):
     setup_logger(debug)
 
 @cli.command()
-@click.option('--episodes', default=200, help="Number of episodes to train.")
+@click.option('--episodes', default=500, help="Number of episodes to train.")
 def train(episodes):
     """Train the DQN agent."""
     config = Config()

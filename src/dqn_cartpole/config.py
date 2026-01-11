@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 @dataclass
 class Config:
-    env_name: str = "CartPole-v0"
+    env_name: str = "CartPole-v1"
     gamma: float = 0.99
     epsilon_start: float = 1.0
     epsilon_min: float = 0.01
@@ -12,7 +12,7 @@ class Config:
     memory_size: int = 2000
     train_start_size: int = 1000
     target_update_freq: int = 10
-    episodes: int = 200  # CartPole-v0 is considered solved at 195 avg reward over 100 episodes
+    episodes: int = 500  # CartPole-v1 is solved at 475 avg reward
     model_path: str = "outputs/dqn_cartpole_model.pth"
     plot_path: str = "outputs/training_plot.png"
     log_file: str = "outputs/training.log"

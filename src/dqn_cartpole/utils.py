@@ -9,7 +9,7 @@ def setup_logger(debug: bool = False, log_file: str = "app.log"):
     logger.add(
         sys.stderr,
         level=level,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+        format="<green>{time:HH:mm:ss}</green> | <level>{level: <7}</level> | <level>{message}</level>"
     )
     
     # File handler

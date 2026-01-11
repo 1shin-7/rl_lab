@@ -1,6 +1,6 @@
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Center
-from textual.widgets import Header, Footer, Static, Label
+from textual.containers import Container, Horizontal
+from textual.widgets import Footer, Static, Label
 from textual.reactive import reactive
 from textual.worker import get_current_worker
 from loguru import logger
@@ -8,8 +8,8 @@ import torch
 import time
 
 from ...tasks import get_task
-from ...config import Config
-from ...agent import DQNAgent
+from ...utils import Config
+from ...agent import BaseDQNAgent
 
 class VisualApp(App):
     CSS = """
@@ -125,7 +125,7 @@ class VisualApp(App):
             env = task.make_env()
             config = Config()
             
-            agent = DQNAgent(task.state_size, task.action_size, config)
+            agent = BaseDQNAgent(task.state_size, task.action_size, config, model_factory=task.create_model)
             
             use_random_policy = False
             if self.weight_path:

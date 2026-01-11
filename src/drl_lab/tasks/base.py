@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
+import torch.nn as nn
 
 class BaseTask(ABC):
     def __init__(self, name: str):
@@ -20,6 +21,11 @@ class BaseTask(ABC):
     @abstractmethod
     def action_size(self) -> int:
         """Returns the number of possible actions."""
+        pass
+
+    @abstractmethod
+    def create_model(self) -> nn.Module:
+        """Creates and returns the neural network model for this task."""
         pass
 
     def preprocess_state(self, state):

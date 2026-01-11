@@ -3,6 +3,7 @@ import numpy as np
 from textual.widgets import Placeholder
 from textual.containers import Container
 from .base import BaseTask
+from ..models import SimpleMLP
 
 class CliffWalkingWidget(Container):
     CSS = """
@@ -115,6 +116,10 @@ class CliffWalkingTask(BaseTask):
     @property
     def action_size(self) -> int:
         return self._action_size
+
+    def create_model(self):
+        # State is one-hot (48), generic MLP is fine
+        return SimpleMLP(self.state_size, self.action_size)
 
     def preprocess_state(self, state):
         if isinstance(state, (np.ndarray, list)):

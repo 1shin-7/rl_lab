@@ -3,6 +3,7 @@ import numpy as np
 from rich.text import Text
 from rich.panel import Panel
 from .base import BaseTask
+from ..models import SimpleMLP
 
 class CartPoleTask(BaseTask):
     def __init__(self):
@@ -22,6 +23,9 @@ class CartPoleTask(BaseTask):
     @property
     def action_size(self) -> int:
         return self._action_size
+
+    def create_model(self):
+        return SimpleMLP(self.state_size, self.action_size)
 
     def _braille_line(self, x0, y0, x1, y1, width, height, canvas):
         """Draws a line using Bresenham's algorithm on a virtual 2x4 dot grid per char."""

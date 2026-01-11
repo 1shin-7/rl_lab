@@ -5,29 +5,15 @@ import torch.nn as nn
 import torch.optim as optim
 from collections import deque
 from loguru import logger
-from .config import Config
+from typing import Callable
+from .utils import Config
 
-class DQN(nn.Module):
-    def __init__(self, state_size, action_size):
-        super(DQN, self).__init__()
-        self.fc1 = nn.Linear(state_size, 24)
-        self.fc2 = nn.Linear(24, 24)
-        self.fc3 = nn.Linear(24, action_size)
-
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        return self.fc3(x)
-
-class DQNAgent:
-    def __init__(self, state_size: int, action_size: int, config: Config):
+class BaseDQNAgent:
+    def __init__(self, state_size: int, action_size: int, config: Config, model_factory: Callable[[], nn.Module]):
         self.state_size = state_size
         self.action_size = action_size
         self.config = config
         
-        # Device selection: generic torch device selection.
-        # This will pick up cuda if available (native Linux/WSL2) or cpu.
-        # If user installs torch-directml or others, specific handling might be needed but standard torch is fine.
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"Using device: {self.device}")
 
@@ -35,9 +21,9 @@ class DQNAgent:
         self.epsilon = config.epsilon_start
         
         # Main model (policy network)
-        self.model = DQN(state_size, action_size).to(self.device)
+        self.model = model_factory().to(self.device)
         # Target model (for stable Q-targets)
-        self.target_model = DQN(state_size, action_size).to(self.device)
+        self.target_model = model_factory().to(self.device)
         self.update_target_model()
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=config.learning_rate)
@@ -73,23 +59,19 @@ class DQNAgent:
         minibatch = random.sample(self.memory, self.config.batch_size)
         
         # Pre-process batch
-        # Convert list of tuples to separate numpy arrays first for speed
         states = np.array([i[0] for i in minibatch], dtype=np.float32)
-        actions = np.array([i[1] for i in minibatch], dtype=np.int64) # LongTensor for indexing
+        actions = np.array([i[1] for i in minibatch], dtype=np.int64) 
         rewards = np.array([i[2] for i in minibatch], dtype=np.float32)
         next_states = np.array([i[3] for i in minibatch], dtype=np.float32)
         dones = np.array([i[4] for i in minibatch], dtype=np.float32)
 
-        # Convert to tensors
         states_t = torch.FloatTensor(states).to(self.device)
-        actions_t = torch.LongTensor(actions).unsqueeze(1).to(self.device) # (batch, 1)
-        rewards_t = torch.FloatTensor(rewards).unsqueeze(1).to(self.device) # (batch, 1)
+        actions_t = torch.LongTensor(actions).unsqueeze(1).to(self.device) 
+        rewards_t = torch.FloatTensor(rewards).unsqueeze(1).to(self.device) 
         next_states_t = torch.FloatTensor(next_states).to(self.device)
-        dones_t = torch.FloatTensor(dones).unsqueeze(1).to(self.device) # (batch, 1)
+        dones_t = torch.FloatTensor(dones).unsqueeze(1).to(self.device) 
 
         # 1. Get predicted Q values for current states and actions
-        # model(states) -> (batch, action_size)
-        # gather(1, actions) -> selects the Q-value for the action taken
         current_q_values = self.model(states_t).gather(1, actions_t)
 
         # 2. Compute target Q values
@@ -109,7 +91,6 @@ class DQNAgent:
 
     def load(self, name):
         logger.info(f"Loading model from {name}")
-        # Map location ensures we can load GPU models on CPU if needed
         self.model.load_state_dict(torch.load(name, map_location=self.device))
         self.update_target_model()
 

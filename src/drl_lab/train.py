@@ -1,23 +1,10 @@
 import numpy as np
 import os
-import matplotlib.pyplot as plt
+from pathlib import Path
 from loguru import logger
-from .config import Config
-from .agent import DQNAgent
+from .utils import Config, PlotRenderer
+from .agent import BaseDQNAgent
 from .tasks import get_task
-
-def plot_rewards(rewards, moving_avg, save_path):
-    plt.figure(figsize=(10, 5))
-    plt.plot(rewards, label='Episode Reward', alpha=0.5)
-    plt.plot(moving_avg, label='Moving Average (100 eps)', linewidth=2)
-    plt.xlabel('Episode')
-    plt.ylabel('Reward')
-    plt.title('DQN Training')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(save_path)
-    plt.close()
-    logger.info(f"Training plot saved to {save_path}")
 
 def train(task_name: str, output_path: str, episodes: int):
     # Load default config and override
@@ -41,14 +28,13 @@ def train(task_name: str, output_path: str, episodes: int):
     task = get_task(task_name)
     env = task.make_env()
     
-    agent = DQNAgent(task.state_size, task.action_size, config)
+    agent = BaseDQNAgent(task.state_size, task.action_size, config, model_factory=task.create_model)
+    plotter = PlotRenderer(task.name, Path(config.plot_path))
     
     logger.info(f"Starting training on {task.name} for {config.episodes} episodes.")
     logger.info(f"Output: {config.model_path}")
     logger.info(f"Device: {agent.device} | Batch: {config.batch_size} | LR: {config.learning_rate}")
     
-    rewards_history = []
-    moving_avg_history = []
     best_reward = -float('inf')
 
     for e in range(config.episodes):
@@ -84,9 +70,8 @@ def train(task_name: str, output_path: str, episodes: int):
         if agent.epsilon > config.epsilon_min:
             agent.epsilon *= config.epsilon_decay
 
-        rewards_history.append(total_reward)
-        avg_reward = np.mean(rewards_history[-100:])
-        moving_avg_history.append(avg_reward)
+        plotter.update(total_reward)
+        avg_reward = plotter.moving_avgs[-1]
         
         # Log logic:
         # - First 20 episodes: Log every episode
@@ -103,5 +88,5 @@ def train(task_name: str, output_path: str, episodes: int):
             
     env.close()
     
-    plot_rewards(rewards_history, moving_avg_history, config.plot_path)
+    plotter.render()
     logger.success(f"Training completed. Best Avg Reward: {best_reward:.2f}. Model saved to {config.model_path}")

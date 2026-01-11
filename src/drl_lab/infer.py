@@ -1,7 +1,7 @@
 import time
 from loguru import logger
-from .config import Config
-from .agent import DQNAgent
+from .utils import Config
+from .agent import BaseDQNAgent
 from .tasks import get_task
 
 def infer(task_name: str, weight_path: str, episodes: int = 5, render: bool = False):
@@ -13,7 +13,7 @@ def infer(task_name: str, weight_path: str, episodes: int = 5, render: bool = Fa
     render_mode = "human" if render else None
     env = task.make_env(render_mode=render_mode)
     
-    agent = DQNAgent(task.state_size, task.action_size, config)
+    agent = BaseDQNAgent(task.state_size, task.action_size, config, model_factory=task.create_model)
     
     try:
         agent.load(config.model_path)

@@ -4,15 +4,15 @@ from .base import BaseTask
 
 class CliffWalkingTask(BaseTask):
     def __init__(self):
-        super().__init__("CliffWalking-v0")
-        env = gym.make("CliffWalking-v0")
+        super().__init__("CliffWalking-v1")
+        env = gym.make("CliffWalking-v1")
         self._action_size = int(env.action_space.n)
         # Observation space is Discrete(48)
         self._n_states = int(env.observation_space.n)
         env.close()
 
     def make_env(self, render_mode=None):
-        return gym.make("CliffWalking-v0", render_mode=render_mode)
+        return gym.make("CliffWalking-v1", render_mode=render_mode)
 
     @property
     def state_size(self) -> int:

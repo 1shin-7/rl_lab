@@ -10,15 +10,26 @@ dependencies = [
     "loguru>=0.7.3",
     "matplotlib>=3.10.8",
     "numpy>=2.4.1",
-    "textual>=7.1.0",
+    "textual>=1.0.0",
     "torch>=2.2.0",
 ]
+
+[project.optional-dependencies]
+gpu = []
 
 [project.scripts]
 lab = "drl_lab.cli.main:cli"
 
 [tool.uv]
 package = true
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
 
 [build-system]
 requires = ["hatchling"]

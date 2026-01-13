@@ -2,6 +2,7 @@ from typing import Dict, Type, List
 from .base import BaseTask as BaseTask
 from .cartpole import CartPoleTask as CartPoleTask
 from .cliff_walking import CliffWalkingTask as CliffWalkingTask
+from ..utils.matching import fuzzy_match
 
 class TaskRegistry:
     """
@@ -18,11 +19,10 @@ class TaskRegistry:
         self._registry[name] = task_cls
 
     def get(self, name: str) -> BaseTask:
-        """Instantiate and return a task by name."""
-        if name not in self._registry:
-            available = list(self._registry.keys())
-            raise ValueError(f"Unknown task: {name}. Available tasks: {available}")
-        return self._registry[name]()
+        """Instantiate and return a task by name, with auto-completion and fuzzy matching."""
+        available = list(self._registry.keys())
+        matched_name = fuzzy_match(name, available)
+        return self._registry[matched_name]()
 
     def list_all(self) -> List[str]:
         """List all registered task names."""

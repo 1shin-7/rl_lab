@@ -1,4 +1,8 @@
+import matplotlib
+# Force non-interactive backend 'Agg' before importing pyplot
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 from pathlib import Path
 from loguru import logger
 import numpy as np

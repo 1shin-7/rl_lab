@@ -18,7 +18,7 @@ dependencies = [
 gpu = []
 
 [project.scripts]
-lab = "drl_lab.cli.main:cli"
+rlab = "drl_lab.cli.main:cli"
 
 [tool.uv]
 package = true
@@ -35,5 +35,10 @@ torch = { index = "pytorch-cu124" }
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = [
+    "ruff>=0.14.11",
+]
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/drl_lab"]
+packages = ["drl_lab"]

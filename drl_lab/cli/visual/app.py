@@ -1,6 +1,6 @@
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
-from textual.widgets import Footer, Static, Label
+from textual.widgets import Footer, Label
 from textual.reactive import reactive
 from textual.worker import get_current_worker
 from loguru import logger
@@ -8,7 +8,6 @@ import torch
 import time
 
 from ...tasks import get_task
-from ...utils import Config
 from ...agent import BaseDQNAgent
 
 class VisualApp(App):
@@ -19,7 +18,7 @@ class VisualApp(App):
         grid-rows: auto 1fr auto;
     }
     
-    #header {
+    #app-header {
         dock: top;
         height: 3;
         width: 100%;
@@ -46,7 +45,6 @@ class VisualApp(App):
         width: 100%;
         height: 100%;
         align: center middle;
-        # background: $surface; 
     }
     
     #log-line {
@@ -67,16 +65,20 @@ class VisualApp(App):
         super().__init__(**kwargs)
         self.task_name = task_name
         self.weight_path = weight_path
-        self.game_widget = None
+        # Initialize task early to get TUI
+        self.task = get_task(task_name)
+        self.tui = self.task.render()
 
     def compose(self) -> ComposeResult:
-        with Horizontal(id="header"):
+        with Horizontal(id="app-header"):
             yield Label(self.status_text, id="status-label")
             yield Label(f"Device: {self.device_text}", id="device-label")
         
+        # Mount the Task's TUI
+        # The TUI itself returns a list of widgets (Header + Content)
+        # We wrap it in a container
         with Container(id="game-container"):
-            # Placeholder, will be replaced or content set
-            yield Static(id="game-placeholder")
+            yield from self.tui.compose_view()
             
         yield Label("", id="log-line")
         yield Footer()
@@ -103,29 +105,17 @@ class VisualApp(App):
     def watch_status_text(self, value: str) -> None:
         try:
             self.query_one("#status-label", Label).update(value)
-        except:
+        except Exception:
             pass
 
     def simulation_loop(self):
         worker = get_current_worker()
-        task_name = self.task_name
         
         try:
-            task = get_task(task_name)
+            env = self.task.env # Use the task's persistent env
+            config = self.task.config
             
-            # Setup specific widget if task supports it
-            custom_widget = task.create_visual_widget()
-            if custom_widget:
-                self.call_from_thread(self.mount_custom_widget, custom_widget)
-                self.game_widget = custom_widget
-            else:
-                # Fallback to Static
-                self.call_from_thread(self.mount_static_widget)
-                
-            env = task.make_env()
-            config = Config()
-            
-            agent = BaseDQNAgent(task.state_size, task.action_size, config, model_factory=task.create_model)
+            agent = BaseDQNAgent(self.task.state_size, self.task.action_size, config, model_factory=self.task.create_model)
             
             use_random_policy = False
             if self.weight_path:
@@ -137,14 +127,14 @@ class VisualApp(App):
                 agent.epsilon = 1.0 # Full random to show movement
                 use_random_policy = True
 
-            logger.info(f"Started {task_name}")
+            logger.info(f"Started {self.task_name}")
 
             episode = 0
             while not worker.is_cancelled:
                 episode += 1
                 state, info = env.reset()
                 raw_state = state
-                state = task.preprocess_state(state)
+                state = self.task.preprocess_state(state)
                 done = False
                 total_reward = 0
                 step = 0
@@ -153,46 +143,29 @@ class VisualApp(App):
                     step += 1
                     
                     # Update UI
-                    if self.game_widget and hasattr(self.game_widget, 'update_state'):
-                         # Use custom widget update
-                         self.call_from_thread(self.game_widget.update_state, raw_state, info)
-                    else:
-                         # Fallback to render_tui -> Static.update
-                         tui_view = task.render_tui(raw_state, info)
-                         self.call_from_thread(self.query_one("#game-view", Static).update, tui_view)
+                    self.call_from_thread(self.tui.update_state, raw_state, info)
+                    self.call_from_thread(self.tui.update_stats, episode, step, total_reward)
                     
-                    status = f"Episode: {episode} | Step: {step} | Reward: {total_reward:.2f}"
+                    # Also update App status for debug
+                    status = f"Running {self.task_name}..."
                     self.call_from_thread(lambda: setattr(self, "status_text", status))
                     
-                    # If we want random behavior (no weights), we must set training=True to use epsilon
-                    # If we have weights, training=False uses greedy
                     action = agent.act(state, training=use_random_policy)
                     
                     next_state, reward, terminated, truncated, info = env.step(action)
                     done = terminated or truncated
                     
                     raw_state = next_state
-                    state = task.preprocess_state(next_state)
+                    state = self.task.preprocess_state(next_state)
                     total_reward += reward
                     
                     time.sleep(0.05) 
                 
                 logger.info(f"Episode {episode} finished. Total Reward: {total_reward}")
                 time.sleep(0.5)
-                
-            env.close()
+            
+            # Note: We don't close env here as it is managed by the Task
             
         except Exception as e:
             logger.error(f"Error: {e}")
             time.sleep(5)
-
-    def mount_custom_widget(self, widget):
-        container = self.query_one("#game-container", Container)
-        container.remove_children()
-        container.mount(widget)
-        
-    def mount_static_widget(self):
-        container = self.query_one("#game-container", Container)
-        if not container.query("#game-view"):
-            container.remove_children()
-            container.mount(Static(id="game-view"))

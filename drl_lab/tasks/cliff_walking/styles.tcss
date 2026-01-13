@@ -1,0 +1,42 @@
+CliffWalkingWidget {
+    layout: grid;
+    grid-size: 12 4;
+    grid-gutter: 1;
+    width: auto;
+    height: auto;
+    border: solid $accent;
+    align: center middle;
+    background: $surface;
+}
+
+Placeholder {
+    width: 7;  /* Approx square-ish in terminal (2:1 font ratio typically) */
+    height: 3; 
+    background: $surface-lighten-1;
+    color: $text;
+}
+
+/* State modifiers */
+.start {
+    background: $warning;
+    color: black;
+}
+
+.goal {
+    background: $success;
+    color: black;
+}
+
+.cliff {
+    background: $error;
+}
+
+.ground {
+    background: white;
+    color: black;
+}
+
+.agent {
+    background: blue;
+    color: white;
+}

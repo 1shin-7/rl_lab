@@ -1,6 +1,6 @@
-from .base import BaseTask
-from .cartpole import CartPoleTask
-from .cliff_walking import CliffWalkingTask
+from .base import BaseTask as BaseTask
+from .cartpole import CartPoleTask as CartPoleTask
+from .cliff_walking import CliffWalkingTask as CliffWalkingTask
 
 TASK_REGISTRY = {
     "cartpole": CartPoleTask,
@@ -15,3 +15,5 @@ def get_task(name: str) -> BaseTask:
 
 def get_all_tasks():
     return TASK_REGISTRY
+
+__all__ = ["BaseTask", "CartPoleTask", "CliffWalkingTask", "TASK_REGISTRY", "get_task", "get_all_tasks"]

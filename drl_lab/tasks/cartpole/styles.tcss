@@ -1,0 +1,24 @@
+CartPoleWidget {
+    layout: vertical;
+    width: 62; /* 60 chars width + padding */
+    height: 14; /* 10 chars height + text + padding */
+    align: center middle;
+    border: heavy $accent;
+    background: transparent; /* Use terminal default */
+    color: $text;
+}
+
+#canvas {
+    width: 60;
+    height: 10;
+    background: $surface-lighten-1;
+    color: $text;
+    margin: 1 1;
+}
+
+.info-text {
+    text-align: center;
+    text-style: bold;
+    color: $accent;
+    padding-bottom: 1;
+}

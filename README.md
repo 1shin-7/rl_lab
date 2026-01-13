@@ -1,60 +1,79 @@
-# DQN CartPole CLI
+# Deep Reinforcement Learning Lab (DRL Lab)
 
-A simple Deep Reinforcement Learning project using TensorFlow to solve the CartPole-v0 environment.
+<div align="center">
 
-## Requirements
+![Socialify](https://socialify.git.ci/1shin-7/rl_lab/image?description=1&font=Inter&language=1&name=1&owner=1&pattern=Plus&theme=Auto)
 
-- Python 3.12+
-- `uv` package manager (recommended)
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![License](https://img.shields.io/badge/License-GPL%20v2-green.svg)](LICENSE)
 
-## Installation
+[English](README.md) | [简体中文](docs/README_zh.md)
+
+</div>
+
+> "Bridging theory and practice: An exploration from Markov Decision Processes to Rainbow DQN."
+
+`drl_lab` is a modular, extensible Deep Reinforcement Learning (DRL) experimental platform designed to provide out-of-the-box implementations of classic control tasks with a modern debugging experience.
+
+## ✨ Features
+
+*   **Modern Architecture**: Built on **PyTorch** and **Gymnasium**, featuring a modular design for `Agent`, `Task`, and `Trainer`.
+*   **Rainbow DQN Integration**:
+    *   ✅ **Double DQN (DDQN)**: Mitigates Q-value overestimation.
+    *   ✅ **Dueling Networks**: Separates value and advantage streams for faster convergence.
+    *   ✅ **Huber Loss**: Gradient clipping for stability.
+*   **Interactive TUI**: Terminal User Interface powered by **Textual**, enabling **real-time visualization** of training and inference (Braille animations, status dashboards, live logs).
+*   **Developer Friendly**: Lifecycle hooks (`pre_training`, `on_step`, etc.) and a standardized `BaseTask` interface.
+*   **Practical Optimizations**: Includes Reward Shaping for sparse reward tasks like CartPole.
+
+## 🚀 Quickstart
+
+### Installation
+
+This project uses `uv` for package management:
 
 ```bash
+# Clone the repository
+git clone https://github.com/1shin-7/rl_lab.git
+cd rl_lab
+
+# Sync dependencies
 uv sync
 ```
 
-## Usage
-
-This project provides a CLI with `train` and `infer` commands.
-
 ### Training
 
-To train the agent:
+Start training the CartPole task with TUI visualization enabled:
 
 ```bash
-# Run with default settings (200 episodes)
-uv run dqn train
-
-# Run with custom number of episodes
-uv run dqn train --episodes 500
+uv run rlab train cartpole --visual --episodes 500
 ```
-
-This will save:
-- Model weights to `dqn_cartpole_model.pth`
-- Training plot to `training_plot.png`
-- Logs to `training.log`
 
 ### Inference
 
-To run the trained agent:
+Run inference using a trained model:
 
 ```bash
-# Run inference for 5 episodes
-uv run dqn infer --episodes 5
-
-# Run with rendering (visualize the cartpole)
-uv run dqn infer --episodes 5 --render
+uv run rlab infer cartpole --visual --weight outputs/cartpole.pth
 ```
 
-### Global Options
+### Clean
 
-- `--debug`: Enable verbose logging.
+Remove generated models and plots for a task:
 
-## Project Structure
+```bash
+uv run rlab clean cartpole
+```
 
-- `src/dqn_cartpole/`: Source code.
-    - `agent.py`: DQN Agent implementation.
-    - `train.py`: Training loop.
-    - `infer.py`: Inference loop.
-    - `config.py`: Hyperparameters.
-- `pyproject.toml`: Dependencies.
+## 📚 Documentation
+
+*   [Developer Guide](docs/dev.md): Learn how to add new tasks and customize the TUI.
+*   [CLI Reference](docs/commands.md): Detailed documentation for all CLI commands.
+
+## 🤝 Credits
+
+*   **[PyTorch](https://pytorch.org/)**: The backbone of the entire project, enabling flexible and efficient deep learning.
+*   [Gymnasium](https://gymnasium.farama.org/): Standardized RL environment API.
+*   UI/UX: [Textual](https://textual.textualize.io/), [Loguru](https://github.com/Delgan/loguru), and [Rich](https://github.com/Textualize/rich) were used to provide a convenient debugging interface.
+*   **[Gemini](https://gemini.google.com/)**: For assisting in problem-solving throughout the internship.

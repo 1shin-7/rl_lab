@@ -1,6 +1,7 @@
 from textual.app import App, ComposeResult
 from textual.widgets import RichLog
 from loguru import logger
+import torch
 from typing import Any, Dict
 
 from ...train import Trainer, TrainingCallbacks
@@ -19,7 +20,7 @@ class TrainingAppCallback(TrainingCallbacks):
 class VisualTrainApp(App):
     CSS_PATH = "training.tcss"
 
-    def __init__(self, task_name: str, episodes: int, output_path: str = None, log_lines: int = 15):
+    def __init__(self, task_name: str, episodes: int, output_path: str = None, log_lines: int = 5):
         super().__init__()
         self.task_name = task_name
         self.episodes = episodes
@@ -32,13 +33,19 @@ class VisualTrainApp(App):
 
     def compose(self) -> ComposeResult:
         # Mount Task TUI (Header + Content)
-        # TUI.compose_view returns Header (dock top) and Content (1fr)
         yield from self.tui.compose_view()
         
         # Log Output at Bottom
         log_widget = RichLog(id="log-output", highlight=True, markup=True)
-        # Calculate height: lines + 2 for borders
-        log_widget.styles.height = self.log_lines + 2
+        log_widget.border_title = "Training Logs"
+        
+        # Explicitly force height. "auto" in CSS might be overriding or defaulting poorly.
+        # We set min/max height too to be sure.
+        h = self.log_lines + 2
+        log_widget.styles.height = h
+        log_widget.styles.min_height = h
+        log_widget.styles.max_height = h
+        
         yield log_widget
 
     def on_mount(self) -> None:
@@ -46,6 +53,10 @@ class VisualTrainApp(App):
         logger.remove()
         logger.add(self.sink_log, format="{time:HH:mm:ss} | {level} | {message}")
         
+        # Update device info
+        device = "CUDA" if torch.cuda.is_available() else "CPU"
+        self.tui.header.device = device
+
         # Start training in background
         self.run_worker(self.training_loop, exclusive=True, thread=True)
 

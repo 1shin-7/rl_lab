@@ -1,25 +1,20 @@
 Screen {
     layout: vertical;
-    /* layout: grid; grid-rows: auto 1fr auto; -- this is implicit with dock */
 }
-
-/* Note: Header is docked top by the widget itself. */
 
 /* Main content area */
 #task-content {
-    /* Set in python code to 1fr, but ensuring here */
     height: 1fr;
     width: 100%;
     align: center middle;
-    overflow: hidden; /* Prevent overflow */
+    overflow: hidden; 
 }
 
 RichLog {
     width: 100%;
-    /* Height is set dynamically */
     dock: bottom;
     border: solid $accent;
-    border-title: "Training Logs";
     background: $surface;
     color: $text;
+    /* Height is controlled by Python */
 }

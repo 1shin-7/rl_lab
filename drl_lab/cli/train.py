@@ -7,7 +7,7 @@ from .visual import VisualTrainApp
 @click.option('--episodes', default=500, help="Number of episodes to train.")
 @click.option('--output', default=None, help="Path to save the model.")
 @click.option('--visual', is_flag=True, help="Enable TUI visualization during training.")
-@click.option('--visual-logs', default=15, help="Number of log lines to show in visual mode.")
+@click.option('--visual-logs', default=5, help="Number of log lines to show in visual mode.")
 def train_cmd(task, episodes, output, visual, visual_logs):
     """Train the agent on a task."""
     if visual:

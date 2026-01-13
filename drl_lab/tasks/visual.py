@@ -41,6 +41,7 @@ class TaskHeader(Horizontal):
     episode = reactive(0)
     step = reactive(0)
     reward = reactive(0.0)
+    device = reactive("CPU")
     
     def __init__(self, task_name: str):
         super().__init__()
@@ -49,7 +50,7 @@ class TaskHeader(Horizontal):
     def compose(self) -> ComposeResult:
         yield Label(f"Ep: {self.episode} | St: {self.step}", classes="stats-left", id="stats-left")
         yield Label(self.task_name, classes="title-center")
-        yield Label(f"Rw: {self.reward:.2f}", classes="stats-right", id="stats-right")
+        yield Label(f"{self.device} | Rw: {self.reward:.2f}", classes="stats-right", id="stats-right")
 
     def watch_episode(self, value: int):
         self._update_left()
@@ -58,15 +59,21 @@ class TaskHeader(Horizontal):
         self._update_left()
 
     def watch_reward(self, value: float):
-        try:
-            self.query_one("#stats-right", Label).update(f"Rw: {value:.2f}")
-        except Exception: 
-            pass
+        self._update_right()
+
+    def watch_device(self, value: str):
+        self._update_right()
 
     def _update_left(self):
         try:
             self.query_one("#stats-left", Label).update(f"Ep: {self.episode} | St: {self.step}")
         except Exception:
+            pass
+
+    def _update_right(self):
+        try:
+            self.query_one("#stats-right", Label).update(f"{self.device} | Rw: {self.reward:.2f}")
+        except Exception: 
             pass
 
 class BaseTaskTUI(ABC):

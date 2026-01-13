@@ -1,11 +1,13 @@
+from pathlib import Path
+
 import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+from loguru import logger
+
 # Force non-interactive backend 'Agg' before importing pyplot
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
-from pathlib import Path
-from loguru import logger
-import numpy as np
 from . import paths
 
 class PlotRenderer:
@@ -27,7 +29,11 @@ class PlotRenderer:
         try:
             plt.figure(figsize=(10, 5))
             plt.plot(self.rewards, label='Episode Reward', alpha=0.5)
-            plt.plot(self.moving_avgs, label=f'Moving Average ({self.window_size} eps)', linewidth=2)
+            plt.plot(
+                self.moving_avgs, 
+                label=f'Moving Average ({self.window_size} eps)', 
+                linewidth=2
+            )
             plt.xlabel('Episode')
             plt.ylabel('Reward')
             plt.title(f'DQN Training: {self.task_name}')

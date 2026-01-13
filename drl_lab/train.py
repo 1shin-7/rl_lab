@@ -1,13 +1,15 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Optional, Union, Any, Dict, Protocol, Callable
-from loguru import logger
+from typing import Any, Protocol
 
-from .utils import PlotRenderer, paths
 from .agent import BaseDQNAgent
-from .tasks import get_task, BaseTask
+from .tasks import BaseTask, get_task
+from .utils import PlotRenderer, logger, paths
 
 class TrainingCallbacks(Protocol):
-    def on_step(self, step: int, state: Any, reward: float, info: Dict[str, Any]) -> None: ...
+    def on_step(
+        self, step: int, state: Any, reward: float, info: dict[str, Any]
+    ) -> None: ...
     def on_episode_end(self, episode: int, steps: int, reward: float) -> None: ...
 
 class Trainer:
@@ -18,10 +20,10 @@ class Trainer:
     def __init__(
         self, 
         task_name: str, 
-        output_path: Optional[Union[str, Path]] = None, 
-        episodes: Optional[int] = None,
-        callbacks: Optional[TrainingCallbacks] = None,
-        should_stop: Optional[Callable[[], bool]] = None
+        output_path: str | Path | None = None, 
+        episodes: int | None = None,
+        callbacks: TrainingCallbacks | None = None,
+        should_stop: Callable[[], bool] | None = None
     ):
         self.task_name = task_name
         self.output_path = Path(output_path) if output_path else None
@@ -34,8 +36,8 @@ class Trainer:
         self._setup_paths()
         
         # Lazy initialization
-        self.agent: Optional[BaseDQNAgent] = None
-        self.plotter: Optional[PlotRenderer] = None
+        self.agent: BaseDQNAgent | None = None
+        self.plotter: PlotRenderer | None = None
         self.best_reward = -float('inf')
 
     def _setup_config(self) -> None:
@@ -46,13 +48,15 @@ class Trainer:
 
     def _setup_paths(self) -> None:
         """Configures model and plot paths using centralized path utilities."""
-        model_path, plot_path = paths.resolve_task_paths(self.task_name, self.output_path)
+        model_path, plot_path = paths.resolve_task_paths(
+            self.task_name, self.output_path
+        )
         self.config.model_path = str(model_path)
         self.config.plot_path = str(plot_path)
 
     def _initialize(self) -> None:
         """Initializes the agent, environment, and resources."""
-        # Ensure environment is ready (handled by Task)
+        # Ensure environment is ready
         _ = self.task.env 
         
         self.agent = BaseDQNAgent(
@@ -66,16 +70,14 @@ class Trainer:
         logger.info(f"Initialized training for task: {self.task.name}")
         logger.info(f"   Episodes: {self.config.episodes}")
         logger.info(f"   Device: {self.agent.device}")
-        logger.info(f"   Batch Size: {self.config.batch_size} | LR: {self.config.learning_rate}")
+        logger.info(
+            f"   Batch Size: {self.config.batch_size} | "
+            f"LR: {self.config.learning_rate}"
+        )
         logger.info(f"   Output: {self.config.model_path}")
 
-    def _run_episode(self, episode_idx: int) -> float:
-        """
-        Runs a single episode.
-        
-        Returns:
-            float: The total reward obtained in this episode.
-        """
+    def _run_episode(self, episode_idx: int) -> tuple[float, int]:
+        """Runs a single episode."""
         self.task.pre_episode(episode_idx)
         
         state, info = self.task.env.reset()
@@ -117,24 +119,23 @@ class Trainer:
         return total_reward, steps
 
     def _update_agent_state(self, episode_idx: int) -> None:
-        """Updates agent internal state (target model, epsilon)."""
-        # Update target network
+        """Updates agent internal state."""
         if episode_idx % self.config.target_update_freq == 0:
             self.agent.update_target_model()
 
-        # Decay epsilon
         if self.agent.epsilon > self.config.epsilon_min:
             self.agent.epsilon *= self.config.epsilon_decay
 
     def _log_and_save(self, episode_idx: int, steps: int, reward: float) -> None:
-        """Handles logging and model saving based on performance."""
+        """Handles logging and model saving."""
         self.plotter.update(reward)
-        avg_reward = self.plotter.moving_avgs[-1] if self.plotter.moving_avgs else reward
+        avg_reward = (
+            self.plotter.moving_avgs[-1] if self.plotter.moving_avgs else reward
+        )
         
         if self.callbacks:
             self.callbacks.on_episode_end(episode_idx, steps, reward)
 
-        # Log logic: First 20 episodes verbose, then every 10
         should_log = (episode_idx < 20) or ((episode_idx + 1) % 10 == 0)
         
         if should_log:
@@ -147,7 +148,10 @@ class Trainer:
             )
 
         if avg_reward > self.best_reward:
-            logger.success(f"New Best Avg Reward: {avg_reward:.2f} (prev: {self.best_reward:.2f}). Saving...")
+            logger.success(
+                f"New Best Avg Reward: {avg_reward:.2f} "
+                f"(prev: {self.best_reward:.2f}). Saving..."
+            )
             self.best_reward = avg_reward
             self.agent.save(self.config.model_path)
 
@@ -155,7 +159,6 @@ class Trainer:
         """Executes the full training loop."""
         self._initialize()
         
-        # Hook: Pre-training
         try:
             self.task.pre_training()
         except Exception as e:
@@ -170,7 +173,6 @@ class Trainer:
                     
                 reward, steps = self._run_episode(e)
                 
-                # If stopped mid-episode, don't update state or log
                 if self.should_stop():
                     break
                     
@@ -181,7 +183,6 @@ class Trainer:
         except Exception as e:
             logger.exception(f"Unexpected error during training: {e}")
         finally:
-            # Hook: Post-training
             try:
                 self.task.post_training()
             except Exception as e:
@@ -190,9 +191,11 @@ class Trainer:
             if self.plotter:
                 self.plotter.render()
                 
-            logger.success(f"Training session ended. Best Avg Reward: {self.best_reward:.2f}")
+            logger.success(
+                f"Training session ended. Best Avg Reward: {self.best_reward:.2f}"
+            )
 
 def train(task_name: str, output_path: str, episodes: int) -> None:
-    """Legacy wrapper for backward compatibility."""
+    """Legacy wrapper."""
     trainer = Trainer(task_name, output_path, episodes)
     trainer.run()

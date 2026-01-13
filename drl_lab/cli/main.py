@@ -1,9 +1,10 @@
 import click
+
 from ..utils import setup_logger
-from .train import train_cmd
+from .clean import clean_cmd
 from .infer import infer_cmd
 from .tasks import tasks_cmd
-from .clean import clean_cmd
+from .train import train_cmd
 
 @click.group()
 @click.option('--debug', is_flag=True, help="Enable debug logging.")

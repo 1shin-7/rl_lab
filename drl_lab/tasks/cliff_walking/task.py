@@ -1,11 +1,12 @@
+from typing import Any
+
 import gymnasium as gym
 import numpy as np
 import torch.nn as nn
-from typing import Any
 
+from ...models import DuelingMLP
 from ..base import BaseTask
 from ..visual import BaseTaskTUI
-from ...models import DuelingMLP
 from .tui import CliffWalkingTUI
 
 class CliffWalkingTask(BaseTask):

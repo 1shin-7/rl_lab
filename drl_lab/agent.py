@@ -1,13 +1,14 @@
 import random
+from collections import deque
+from collections.abc import Callable
+from pathlib import Path
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from collections import deque
-from loguru import logger
-from typing import Callable, Union
-from pathlib import Path
-from .utils import Config, paths
+
+from .utils import Config, logger, paths
 
 class BaseDQNAgent:
     """
@@ -48,16 +49,16 @@ class BaseDQNAgent:
 
     def remember(
         self, 
-        state: Union[np.ndarray, list], 
+        state: np.ndarray | list, 
         action: int, 
         reward: float, 
-        next_state: Union[np.ndarray, list], 
+        next_state: np.ndarray | list, 
         done: bool
     ) -> None:
         """Store a transition tuple in the replay memory."""
         self.memory.append((state, action, reward, next_state, done))
 
-    def act(self, state: Union[np.ndarray, list], training: bool = True) -> int:
+    def act(self, state: np.ndarray | list, training: bool = True) -> int:
         """
         Select an action using an epsilon-greedy policy if training, otherwise greedy.
         """
@@ -107,15 +108,13 @@ class BaseDQNAgent:
 
         # 2. Target Q values (Next State)
         with torch.no_grad():
-            # Double DQN Logic:
-            # a) Select best action using Online Model
+            # Double DQN Logic
             next_actions = self.model(next_states_t).argmax(1, keepdim=True)
-            
-            # b) Evaluate that action using Target Model
             next_q_values = self.target_model(next_states_t).gather(1, next_actions)
             
             # Compute Target
-            target_q_values = rewards_t + (self.config.gamma * next_q_values * (1.0 - dones_t))
+            gamma = self.config.gamma
+            target_q_values = rewards_t + (gamma * next_q_values * (1.0 - dones_t))
 
         # 3. Loss & Optimization
         loss = self.loss_fn(current_q_values, target_q_values)
@@ -130,22 +129,21 @@ class BaseDQNAgent:
             
         return loss.item()
 
-    def load(self, path: Union[str, Path]) -> None:
+    def load(self, path: str | Path) -> None:
         """Load model weights from a file."""
-        path = Path(path)
-        if not path.exists():
-            logger.warning(f"Model file not found: {path}")
+        path_obj = Path(path)
+        if not path_obj.exists():
+            logger.warning(f"Model file not found: {path_obj}")
             return
             
-        logger.info(f"Loading model from {path}")
-        self.model.load_state_dict(torch.load(path, map_location=self.device))
+        logger.info(f"Loading model from {path_obj}")
+        self.model.load_state_dict(torch.load(path_obj, map_location=self.device))
         self.update_target_model()
 
-    def save(self, path: Union[str, Path]) -> None:
+    def save(self, path: str | Path) -> None:
         """Save model weights to a file."""
-        path = Path(path)
-        # Use centralized path util to ensure directory exists
-        paths.ensure_dir(path)
+        path_obj = Path(path)
+        paths.ensure_dir(path_obj)
         
-        logger.info(f"Saving model to {path}")
-        torch.save(self.model.state_dict(), path)
+        logger.info(f"Saving model to {path_obj}")
+        torch.save(self.model.state_dict(), path_obj)

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any
+
 import gymnasium as gym
 import torch.nn as nn
 
@@ -12,7 +13,7 @@ class BaseTask(ABC):
     Enforces strong typing and separation of concerns (Logic vs Visuals).
     """
 
-    def __init__(self, name: str, config: Optional[Config] = None):
+    def __init__(self, name: str, config: Config | None = None):
         """
         Initialize the Task.
         
@@ -24,8 +25,8 @@ class BaseTask(ABC):
         self.config: Config = config if config else Config()
         self.config.env_name = name
         
-        self._env: Optional[gym.Env] = None
-        self._tui: Optional[BaseTaskTUI] = None
+        self._env: gym.Env | None = None
+        self._tui: BaseTaskTUI | None = None
 
     @property
     def env(self) -> gym.Env:
@@ -51,7 +52,6 @@ class BaseTask(ABC):
     def get_env(self) -> gym.Env:
         """
         Creates and returns the gymnasium environment instance.
-        This should be called only once by the base class to populate self._env.
         """
         pass
     
@@ -81,8 +81,7 @@ class BaseTask(ABC):
 
     def preprocess_state(self, state: Any) -> Any:
         """
-        Preprocesses the state from the environment into a format suitable for the agent.
-        Default implementation returns the state as is.
+        Preprocesses the state into a format suitable for the agent.
         """
         return state
 
@@ -91,14 +90,12 @@ class BaseTask(ABC):
     def pre_training(self) -> None:
         """
         Hook called before training starts.
-        Useful for initializing resources, logging, or setting up curriculum.
         """
         pass
 
     def post_training(self) -> None:
         """
         Hook called after training finishes.
-        Useful for cleaning up resources or saving final artifacts.
         """
         if self._env:
             self._env.close()
@@ -115,7 +112,7 @@ class BaseTask(ABC):
         """
         pass
 
-    def sync_data(self, data: Dict[str, Any]) -> None:
+    def sync_data(self, data: dict[str, Any]) -> None:
         """
         Hook for syncing arbitrary data (e.g., custom logging metrics).
         """

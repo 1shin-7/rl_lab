@@ -1,10 +1,15 @@
 import click
-from loguru import logger
-from ..utils import paths
+
+from ..utils import logger, paths
 
 @click.command(name="clean")
 @click.argument('task_name', required=False)
-@click.option('--all', 'clean_all', is_flag=True, help="Clean all files in outputs directory.")
+@click.option(
+    '--all', 
+    'clean_all', 
+    is_flag=True, 
+    help="Clean all files in outputs directory."
+)
 def clean_cmd(task_name, clean_all):
     """Clean model and plot files. Specify TASK_NAME or use --all."""
     output_dir = paths.OUTPUTS_DIR
@@ -15,13 +20,11 @@ def clean_cmd(task_name, clean_all):
     files_to_remove = []
 
     if clean_all:
-        # Collect all files in outputs
         files_to_remove = list(output_dir.glob("*"))
         if not files_to_remove:
             logger.info("Outputs directory is already empty.")
             return
     elif task_name:
-        # Specific task files using centralized path logic
         files_to_remove = [
             paths.get_model_path(task_name),
             paths.get_plot_path(task_name),
@@ -39,8 +42,6 @@ def clean_cmd(task_name, clean_all):
                 cleaned_count += 1
             except Exception as e:
                 logger.error(f"Failed to remove {file_path}: {e}")
-        elif not clean_all: # Only log skip if we looked for specific files
-            logger.debug(f"File not found (skipped): {file_path}")
             
     if cleaned_count > 0:
         target = "all files" if clean_all else f"task '{task_name}'"

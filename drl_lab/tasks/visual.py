@@ -1,10 +1,12 @@
+import contextlib
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Dict
+from typing import Any
+
 from textual.app import ComposeResult
-from textual.widgets import Label
 from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 from textual.widget import Widget
+from textual.widgets import Label
 
 class TaskHeader(Horizontal):
     """
@@ -48,9 +50,17 @@ class TaskHeader(Horizontal):
         self.task_name = task_name
 
     def compose(self) -> ComposeResult:
-        yield Label(f"Ep: {self.episode} | St: {self.step}", classes="stats-left", id="stats-left")
+        yield Label(
+            f"Ep: {self.episode} | St: {self.step}", 
+            classes="stats-left", 
+            id="stats-left"
+        )
         yield Label(self.task_name, classes="title-center")
-        yield Label(f"{self.device} | Rw: {self.reward:.2f}", classes="stats-right", id="stats-right")
+        yield Label(
+            f"{self.device} | Rw: {self.reward:.2f}", 
+            classes="stats-right", 
+            id="stats-right"
+        )
 
     def watch_episode(self, value: int):
         self._update_left()
@@ -65,16 +75,16 @@ class TaskHeader(Horizontal):
         self._update_right()
 
     def _update_left(self):
-        try:
-            self.query_one("#stats-left", Label).update(f"Ep: {self.episode} | St: {self.step}")
-        except Exception:
-            pass
+        with contextlib.suppress(Exception):
+            self.query_one("#stats-left", Label).update(
+                f"Ep: {self.episode} | St: {self.step}"
+            )
 
     def _update_right(self):
-        try:
-            self.query_one("#stats-right", Label).update(f"{self.device} | Rw: {self.reward:.2f}")
-        except Exception: 
-            pass
+        with contextlib.suppress(Exception):
+            self.query_one("#stats-right", Label).update(
+                f"{self.device} | Rw: {self.reward:.2f}"
+            )
 
 class BaseTaskTUI(ABC):
     """
@@ -94,16 +104,14 @@ class BaseTaskTUI(ABC):
     def compose_view(self) -> ComposeResult:
         """
         Composes the full task view (Header + Main Widget).
-        Helper for the main App to mount the visual components.
         """
         yield self.header
-        # The main content container fills the rest of the screen
         container = Container(self.get_main_widget(), id="task-content")
         container.styles.height = "1fr"
         container.styles.align = ("center", "middle")
         yield container
 
-    def update_state(self, state: Any, info: Optional[Dict[str, Any]] = None):
+    def update_state(self, state: Any, info: dict[str, Any] | None = None):
         """
         Update the visualization with new state.
         Override this to update your custom widgets.
@@ -119,11 +127,11 @@ class BaseTaskTUI(ABC):
 class DefaultTaskTUI(BaseTaskTUI):
     """
     Default TUI implementation if a task doesn't provide one.
-    Displays the task name in the center.
     """
     
     def get_main_widget(self) -> Widget:
-        label = Label(f"Task: {self.task_name}\n\n(No custom visualization available)", id="default-label")
+        msg = f"Task: {self.task_name}\n\n(No custom visualization available)"
+        label = Label(msg, id="default-label")
         label.styles.align = ("center", "middle")
         label.styles.width = "100%"
         label.styles.height = "100%"

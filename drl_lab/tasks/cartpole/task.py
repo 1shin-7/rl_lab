@@ -2,9 +2,9 @@ import gymnasium as gym
 import torch.nn as nn
 from gymnasium import Wrapper
 
+from ...models import DuelingMLP
 from ..base import BaseTask
 from ..visual import BaseTaskTUI
-from ...models import DuelingMLP
 from .tui import CartPoleTUI
 
 class CenteredRewardWrapper(Wrapper):

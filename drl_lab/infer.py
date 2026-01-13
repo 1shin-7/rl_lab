@@ -1,10 +1,15 @@
 import time
-from loguru import logger
-from .utils import Config
+
 from .agent import BaseDQNAgent
 from .tasks import get_task
+from .utils import Config, logger
 
-def infer(task_name: str, weight_path: str, episodes: int = 5, render_mode: str = None):
+def infer(
+    task_name: str, 
+    weight_path: str, 
+    episodes: int = 5, 
+    render_mode: str = None
+):
     config = Config()
     if weight_path:
         config.model_path = weight_path
@@ -12,7 +17,12 @@ def infer(task_name: str, weight_path: str, episodes: int = 5, render_mode: str 
     task = get_task(task_name)
     env = task.make_env(render_mode=render_mode)
     
-    agent = BaseDQNAgent(task.state_size, task.action_size, config, model_factory=task.create_model)
+    agent = BaseDQNAgent(
+        task.state_size, 
+        task.action_size, 
+        config, 
+        model_factory=task.create_model
+    )
     
     try:
         agent.load(config.model_path)
@@ -40,7 +50,7 @@ def infer(task_name: str, weight_path: str, episodes: int = 5, render_mode: str 
             total_reward += reward
             
             if render_mode == "human":
-                time.sleep(0.01) # Slow down slightly for visualization
+                time.sleep(0.01)
         
         logger.info(f"Episode: {e+1}/{episodes} | Score: {total_reward}")
 

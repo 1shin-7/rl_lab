@@ -1,11 +1,16 @@
 import sys
+from typing import Any
+
 from loguru import logger
-from typing import Optional, Any
 
 # A unified format: color only the level tag, message remains default
-DEFAULT_FORMAT = "<green>{time:HH:mm:ss}</green> | <level>{level: <7}</level> | {message}"
+DEFAULT_FORMAT = (
+    "<green>{time:HH:mm:ss}</green> | "
+    "<level>{level: <7}</level> | "
+    "{message}"
+)
 
-def setup_logger(debug: bool = False, sink: Optional[Any] = None):
+def setup_logger(debug: bool = False, sink: Any | None = None):
     """
     Configures the global logger.
     """

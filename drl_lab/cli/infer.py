@@ -1,4 +1,5 @@
 import click
+
 from ..infer import infer as infer_func
 from .visual import VisualInferenceApp
 

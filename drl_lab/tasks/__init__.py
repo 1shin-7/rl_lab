@@ -1,8 +1,7 @@
-from typing import Dict, Type, List
+from ..utils.matching import fuzzy_match
 from .base import BaseTask as BaseTask
 from .cartpole import CartPoleTask as CartPoleTask
 from .cliff_walking import CliffWalkingTask as CliffWalkingTask
-from ..utils.matching import fuzzy_match
 
 class TaskRegistry:
     """
@@ -10,21 +9,24 @@ class TaskRegistry:
     Allows dynamic registration and retrieval of Task classes.
     """
     def __init__(self):
-        self._registry: Dict[str, Type[BaseTask]] = {}
+        self._registry: dict[str, type[BaseTask]] = {}
 
-    def register(self, name: str, task_cls: Type[BaseTask]) -> None:
+    def register(self, name: str, task_cls: type[BaseTask]) -> None:
         """Register a new task class."""
         if name in self._registry:
             raise ValueError(f"Task '{name}' is already registered.")
         self._registry[name] = task_cls
 
     def get(self, name: str) -> BaseTask:
-        """Instantiate and return a task by name, with auto-completion and fuzzy matching."""
+        """
+        Instantiate and return a task by name.
+        Supports auto-completion and fuzzy matching.
+        """
         available = list(self._registry.keys())
         matched_name = fuzzy_match(name, available)
         return self._registry[matched_name]()
 
-    def list_all(self) -> List[str]:
+    def list_all(self) -> list[str]:
         """List all registered task names."""
         return list(self._registry.keys())
 
@@ -49,8 +51,16 @@ def get_task(name: str) -> BaseTask:
     """
     return registry.get(name)
 
-def get_all_tasks() -> Dict[str, Type[BaseTask]]:
+def get_all_tasks() -> dict[str, type[BaseTask]]:
     """Return the raw registry dict (for backward compatibility)."""
     return registry._registry
 
-__all__ = ["BaseTask", "CartPoleTask", "CliffWalkingTask", "TaskRegistry", "registry", "get_task", "get_all_tasks"]
+__all__ = [
+    "BaseTask", 
+    "CartPoleTask", 
+    "CliffWalkingTask", 
+    "TaskRegistry", 
+    "registry", 
+    "get_task", 
+    "get_all_tasks"
+]

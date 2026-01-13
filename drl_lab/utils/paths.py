@@ -1,10 +1,8 @@
 from pathlib import Path
-from typing import Tuple, Optional
 
 def get_project_root() -> Path:
     """
     Returns the project root directory.
-    Assumes this file is at <project_root>/drl_lab/utils/paths.py
     """
     return Path(__file__).resolve().parent.parent.parent
 
@@ -37,16 +35,11 @@ def resolve_path(path_str: str) -> Path:
     """Resolves a string path to a Path object."""
     return Path(path_str).resolve()
 
-def resolve_task_paths(task_name: str, output_path: Optional[Path] = None) -> Tuple[Path, Path]:
+def resolve_task_paths(
+    task_name: str, output_path: Path | None = None
+) -> tuple[Path, Path]:
     """
     Smartly resolves model and plot paths based on user input.
-    
-    Args:
-        task_name: Name of the task.
-        output_path: Optional user-provided path (file or directory).
-        
-    Returns:
-        (model_path, plot_path)
     """
     # 1. User provided a file path (e.g. "my_model.pth")
     if output_path and output_path.suffix:
@@ -62,4 +55,7 @@ def resolve_task_paths(task_name: str, output_path: Optional[Path] = None) -> Tu
         output_dir = ensure_outputs_dir()
 
     # 3. Construct paths in the determined directory
-    return get_model_path(task_name, output_dir), get_plot_path(task_name, output_dir)
+    return (
+        get_model_path(task_name, output_dir), 
+        get_plot_path(task_name, output_dir)
+    )

@@ -1,27 +1,25 @@
+import time
+
+import torch
+from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Label
 from textual.worker import get_current_worker
-from loguru import logger
-import torch
-import time
-from rich.text import Text
 
-from ...tasks import get_task
 from ...agent import BaseDQNAgent
-from ...utils import setup_logger
+from ...tasks import get_task
+from ...utils import logger, setup_logger
 
 class VisualInferenceApp(App):
     CSS = """
     Screen {
         layout: vertical;
     }
-    
     #task-content {
         height: 1fr;
         width: 100%;
         align: center middle;
     }
-    
     #log-line {
         dock: bottom;
         height: 1;
@@ -29,7 +27,6 @@ class VisualInferenceApp(App):
         color: $text-muted;
     }
     """
-    
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("ctrl+c", "quit", "Quit")
@@ -39,7 +36,6 @@ class VisualInferenceApp(App):
         super().__init__(**kwargs)
         self.task_name = task_name
         self.weight_path = weight_path
-        
         self.rl_task = get_task(task_name)
         self.tui = self.rl_task.render()
         self._worker = None
@@ -51,11 +47,13 @@ class VisualInferenceApp(App):
 
     def on_mount(self) -> None:
         setup_logger(sink=self.sink_log)
-        
         device = "CUDA" if torch.cuda.is_available() else "CPU"
         logger.info(f"Inference Device: {device}")
-        
-        self._worker = self.run_worker(self.simulation_loop, exclusive=True, thread=True)
+        self._worker = self.run_worker(
+            self.simulation_loop, 
+            exclusive=True, 
+            thread=True
+        )
 
     def action_quit(self) -> None:
         if self._worker:
@@ -63,7 +61,6 @@ class VisualInferenceApp(App):
         self.exit()
 
     def sink_log(self, message):
-        """Structured sink."""
         record = message.record
         try:
             if self.is_running:
@@ -75,7 +72,6 @@ class VisualInferenceApp(App):
         try:
             level_name = record["level"].name
             msg_text = record["message"]
-            
             level_color = "white"
             if level_name == "INFO": 
                 level_color = "magenta"
@@ -85,24 +81,24 @@ class VisualInferenceApp(App):
                 level_color = "red"
             elif level_name == "SUCCESS": 
                 level_color = "green"
-            
             text = Text()
             text.append(f"{level_name:<7}", style=f"bold {level_color}")
             text.append(f" | {msg_text}")
-            
             self.query_one("#log-line", Label).update(text)
         except Exception:
             pass
 
     def simulation_loop(self):
         worker = get_current_worker()
-        
         try:
             env = self.rl_task.env 
             config = self.rl_task.config
-            
-            agent = BaseDQNAgent(self.rl_task.state_size, self.rl_task.action_size, config, model_factory=self.rl_task.create_model)
-            
+            agent = BaseDQNAgent(
+                self.rl_task.state_size, 
+                self.rl_task.action_size, 
+                config, 
+                model_factory=self.rl_task.create_model
+            )
             use_random_policy = False
             if self.weight_path:
                 logger.info(f"Loading weights from {self.weight_path}")
@@ -114,7 +110,6 @@ class VisualInferenceApp(App):
                 use_random_policy = True
 
             logger.info(f"Started {self.task_name}")
-
             episode = 0
             while not worker.is_cancelled:
                 episode += 1
@@ -124,38 +119,31 @@ class VisualInferenceApp(App):
                 done = False
                 total_reward = 0
                 step = 0
-                
                 while not done and not worker.is_cancelled:
                     step += 1
-                    
                     action = agent.act(state, training=use_random_policy)
-                    
                     next_state, reward, terminated, truncated, info = env.step(action)
                     total_reward += reward
-                    
                     try:
                         self.call_from_thread(self.tui.update_state, raw_state, info)
-                        # Real-time update stats
-                        self.call_from_thread(self.tui.update_stats, episode, step, total_reward)
+                        self.call_from_thread(
+                            self.tui.update_stats, 
+                            episode, 
+                            step, 
+                            total_reward
+                        )
                     except RuntimeError:
                         pass 
-                    
                     done = terminated or truncated
-                    
                     raw_state = next_state
                     state = self.rl_task.preprocess_state(next_state)
-                    
                     time.sleep(0.05) 
-                
                 if worker.is_cancelled:
                     break
-                    
-                logger.info(f"Episode {episode} finished. Total Reward: {total_reward}")
+                logger.info(f"Episode {episode} finished. Reward: {total_reward}")
                 time.sleep(0.5)
-            
         except Exception as e:
             logger.error(f"Error: {e}")
             time.sleep(5)
-        
         if not worker.is_cancelled:
             self.call_from_thread(self.exit)

@@ -42,3 +42,20 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["drl_lab"]
+
+[tool.ruff]
+# Target version for code generation/fixes
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+# Enabled rule sets
+select = ["E", "F", "B", "C4", "UP", "SIM", "I"]
+# Automatically fix what's possible
+fixable = ["ALL"]
+# Ignore B027 (empty method in ABC)
+ignore = ["B027"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+lines-after-imports = 1

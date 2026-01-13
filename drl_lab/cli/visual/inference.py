@@ -10,7 +10,7 @@ import time
 from ...tasks import get_task
 from ...agent import BaseDQNAgent
 
-class VisualApp(App):
+class VisualInferenceApp(App):
     CSS = """
     Screen {
         layout: grid;
@@ -66,8 +66,8 @@ class VisualApp(App):
         self.task_name = task_name
         self.weight_path = weight_path
         # Initialize task early to get TUI
-        self.task = get_task(task_name)
-        self.tui = self.task.render()
+        self.rl_task = get_task(task_name)
+        self.tui = self.rl_task.render()
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="app-header"):
@@ -112,10 +112,10 @@ class VisualApp(App):
         worker = get_current_worker()
         
         try:
-            env = self.task.env # Use the task's persistent env
-            config = self.task.config
+            env = self.rl_task.env # Use the task's persistent env
+            config = self.rl_task.config
             
-            agent = BaseDQNAgent(self.task.state_size, self.task.action_size, config, model_factory=self.task.create_model)
+            agent = BaseDQNAgent(self.rl_task.state_size, self.rl_task.action_size, config, model_factory=self.rl_task.create_model)
             
             use_random_policy = False
             if self.weight_path:
@@ -134,7 +134,7 @@ class VisualApp(App):
                 episode += 1
                 state, info = env.reset()
                 raw_state = state
-                state = self.task.preprocess_state(state)
+                state = self.rl_task.preprocess_state(state)
                 done = False
                 total_reward = 0
                 step = 0
@@ -156,7 +156,7 @@ class VisualApp(App):
                     done = terminated or truncated
                     
                     raw_state = next_state
-                    state = self.task.preprocess_state(next_state)
+                    state = self.rl_task.preprocess_state(next_state)
                     total_reward += reward
                     
                     time.sleep(0.05) 

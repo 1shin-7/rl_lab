@@ -1,0 +1,32 @@
+Screen {
+    layout: grid;
+    grid-size: 1;
+    grid-rows: 1fr auto;
+}
+
+#training-header {
+    dock: top;
+    height: 3;
+    width: 100%;
+    background: $primary-background;
+    border-bottom: solid $accent;
+    layout: horizontal;
+}
+
+#training-view {
+    width: 100%;
+    height: 100%;
+    align: center middle;
+    border: solid $accent;
+}
+
+RichLog {
+    width: 100%;
+    height: 15; /* Default height, can be adjusted */
+    dock: bottom;
+    border: solid $accent;
+    border-title: "Training Logs";
+    background: $surface;
+    color: $text;
+    overflow-y: scroll;
+}

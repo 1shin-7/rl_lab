@@ -1,12 +1,4 @@
-import click
-from .app import VisualApp as VisualApp
+from .inference import VisualInferenceApp
+from .training import VisualTrainApp
 
-@click.command(name="visual")
-@click.argument('task', default='cliff_walking')
-@click.option('--weight', default=None, help="Path to load the model weights.")
-def visual_cmd(task, weight):
-    """Launch the TUI visualizer for a specific task."""
-    app = VisualApp(task_name=task, weight_path=weight)
-    app.run()
-
-__all__ = ["VisualApp", "visual_cmd"]
+__all__ = ["VisualInferenceApp", "VisualTrainApp"]

@@ -4,13 +4,12 @@ from .utils import Config
 from .agent import BaseDQNAgent
 from .tasks import get_task
 
-def infer(task_name: str, weight_path: str, episodes: int = 5, render: bool = False):
+def infer(task_name: str, weight_path: str, episodes: int = 5, render_mode: str = None):
     config = Config()
     if weight_path:
         config.model_path = weight_path
     
     task = get_task(task_name)
-    render_mode = "human" if render else None
     env = task.make_env(render_mode=render_mode)
     
     agent = BaseDQNAgent(task.state_size, task.action_size, config, model_factory=task.create_model)
@@ -40,7 +39,7 @@ def infer(task_name: str, weight_path: str, episodes: int = 5, render: bool = Fa
             state = next_state
             total_reward += reward
             
-            if render:
+            if render_mode == "human":
                 time.sleep(0.01) # Slow down slightly for visualization
         
         logger.info(f"Episode: {e+1}/{episodes} | Score: {total_reward}")

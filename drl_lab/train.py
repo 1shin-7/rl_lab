@@ -1,29 +1,31 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Any, Dict, Protocol
 from loguru import logger
 
 from .utils import PlotRenderer
 from .agent import BaseDQNAgent
 from .tasks import get_task, BaseTask
 
+class TrainingCallbacks(Protocol):
+    def on_step(self, step: int, state: Any, info: Dict[str, Any]) -> None: ...
+    def on_episode_end(self, episode: int, steps: int, reward: float) -> None: ...
+
 class Trainer:
     """
     Manages the training lifecycle for a Reinforcement Learning agent.
-    
-    Attributes:
-        task_name (str): The name of the task to train on.
-        episodes (int): Total number of episodes to train.
-        output_path (Path): Path to save the best model.
-        task (BaseTask): The task instance.
-        config (Config): The training configuration.
-        agent (BaseDQNAgent): The RL agent.
-        plotter (PlotRenderer): Visualization utility.
     """
 
-    def __init__(self, task_name: str, output_path: Optional[Union[str, Path]] = None, episodes: Optional[int] = None):
+    def __init__(
+        self, 
+        task_name: str, 
+        output_path: Optional[Union[str, Path]] = None, 
+        episodes: Optional[int] = None,
+        callbacks: Optional[TrainingCallbacks] = None
+    ):
         self.task_name = task_name
         self.output_path = Path(output_path) if output_path else None
         self.episodes_override = episodes
+        self.callbacks = callbacks
         
         self.task: BaseTask = get_task(task_name)
         self._setup_config()
@@ -83,23 +85,32 @@ class Trainer:
         """
         self.task.pre_episode(episode_idx)
         
-        state, _ = self.task.env.reset()
+        state, info = self.task.env.reset()
+        raw_state = state
         state = self.task.preprocess_state(state)
         
         total_reward = 0.0
         steps = 0
         done = False
         
+        # Initial callback
+        if self.callbacks:
+            self.callbacks.on_step(steps, raw_state, info)
+        
         while not done:
             steps += 1
             action = self.agent.act(state, training=True)
             
-            next_state, reward, terminated, truncated, _ = self.task.env.step(action)
+            next_state, reward, terminated, truncated, info = self.task.env.step(action)
             
             # Enforce max steps
             if steps >= self.config.max_steps:
                 truncated = True
             
+            # Callback update
+            if self.callbacks:
+                self.callbacks.on_step(steps, next_state, info)
+
             next_state_pre = self.task.preprocess_state(next_state)
             done = terminated or truncated
             
@@ -127,6 +138,9 @@ class Trainer:
         self.plotter.update(reward)
         avg_reward = self.plotter.moving_avgs[-1] if self.plotter.moving_avgs else reward
         
+        if self.callbacks:
+            self.callbacks.on_episode_end(episode_idx, steps, reward)
+
         # Log logic: First 20 episodes verbose, then every 10
         should_log = (episode_idx < 20) or ((episode_idx + 1) % 10 == 0)
         

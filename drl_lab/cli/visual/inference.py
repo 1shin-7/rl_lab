@@ -1,7 +1,5 @@
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal
 from textual.widgets import Footer, Label
-from textual.reactive import reactive
 from textual.worker import get_current_worker
 from loguru import logger
 import torch
@@ -13,37 +11,12 @@ from ...agent import BaseDQNAgent
 class VisualInferenceApp(App):
     CSS = """
     Screen {
-        layout: grid;
-        grid-size: 1;
-        grid-rows: auto 1fr auto;
+        layout: vertical;
     }
     
-    #app-header {
-        dock: top;
-        height: 3;
+    #task-content {
+        height: 1fr;
         width: 100%;
-        background: $primary-background;
-        border-bottom: solid $accent;
-        layout: horizontal;
-    }
-    
-    #status-label {
-        width: 1fr;
-        content-align: left middle;
-        padding-left: 2;
-        text-style: bold;
-    }
-    
-    #device-label {
-        width: auto;
-        content-align: right middle;
-        padding-right: 2;
-        color: $accent;
-    }
-
-    #game-container {
-        width: 100%;
-        height: 100%;
         align: center middle;
     }
     
@@ -57,29 +30,21 @@ class VisualInferenceApp(App):
     
     BINDINGS = [("q", "quit", "Quit")]
 
-    status_text = reactive("Ready")
-    device_text = reactive("CPU")
-    last_log = reactive("")
-
     def __init__(self, task_name: str, weight_path: str = None, **kwargs):
         super().__init__(**kwargs)
         self.task_name = task_name
         self.weight_path = weight_path
-        # Initialize task early to get TUI
+        
+        # FIX: Rename task -> rl_task to avoid conflict with textual.App.task
         self.rl_task = get_task(task_name)
         self.tui = self.rl_task.render()
+        
+        # We can update the task header directly
 
     def compose(self) -> ComposeResult:
-        with Horizontal(id="app-header"):
-            yield Label(self.status_text, id="status-label")
-            yield Label(f"Device: {self.device_text}", id="device-label")
+        # Task TUI provides Header (dock top) + Content (1fr)
+        yield from self.tui.compose_view()
         
-        # Mount the Task's TUI
-        # The TUI itself returns a list of widgets (Header + Content)
-        # We wrap it in a container
-        with Container(id="game-container"):
-            yield from self.tui.compose_view()
-            
         yield Label("", id="log-line")
         yield Footer()
 
@@ -88,10 +53,9 @@ class VisualInferenceApp(App):
         logger.remove()
         logger.add(self.sink_log, format="{message}")
         
-        # Check device
+        # Check device and log it instead of showing in header
         device = "CUDA" if torch.cuda.is_available() else "CPU"
-        self.device_text = device
-        self.query_one("#device-label", Label).update(f"Device: {device}")
+        logger.info(f"Inference Device: {device}")
         
         self.run_worker(self.simulation_loop, exclusive=True, thread=True)
 
@@ -99,12 +63,8 @@ class VisualInferenceApp(App):
         self.call_from_thread(self.update_log, message)
 
     def update_log(self, message):
-        self.last_log = message.strip()
-        self.query_one("#log-line", Label).update(self.last_log)
-
-    def watch_status_text(self, value: str) -> None:
         try:
-            self.query_one("#status-label", Label).update(value)
+            self.query_one("#log-line", Label).update(message.strip())
         except Exception:
             pass
 
@@ -123,8 +83,8 @@ class VisualInferenceApp(App):
                 agent.load(self.weight_path)
                 agent.epsilon = 0.0
             else:
-                logger.warning("No weights provided. Using random policy for visualization.")
-                agent.epsilon = 1.0 # Full random to show movement
+                logger.warning("No weights provided. Using random policy.")
+                agent.epsilon = 1.0 
                 use_random_policy = True
 
             logger.info(f"Started {self.task_name}")
@@ -146,10 +106,6 @@ class VisualInferenceApp(App):
                     self.call_from_thread(self.tui.update_state, raw_state, info)
                     self.call_from_thread(self.tui.update_stats, episode, step, total_reward)
                     
-                    # Also update App status for debug
-                    status = f"Running {self.task_name}..."
-                    self.call_from_thread(lambda: setattr(self, "status_text", status))
-                    
                     action = agent.act(state, training=use_random_policy)
                     
                     next_state, reward, terminated, truncated, info = env.step(action)
@@ -163,8 +119,6 @@ class VisualInferenceApp(App):
                 
                 logger.info(f"Episode {episode} finished. Total Reward: {total_reward}")
                 time.sleep(0.5)
-            
-            # Note: We don't close env here as it is managed by the Task
             
         except Exception as e:
             logger.error(f"Error: {e}")

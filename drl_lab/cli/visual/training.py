@@ -26,23 +26,19 @@ class VisualTrainApp(App):
         self.output_path = output_path
         self.log_lines = log_lines
         
-        self.task = get_task(task_name)
-        self.tui = self.task.render()
-        
-        # Override log height in CSS dynamically if needed, 
-        # but for now we rely on CSS. We can adjust RichLog height.
+        # FIX: Rename task -> rl_task to avoid conflict with textual.App.task
+        self.rl_task = get_task(task_name)
+        self.tui = self.rl_task.render()
 
     def compose(self) -> ComposeResult:
         # Mount Task TUI (Header + Content)
-        # Note: Task TUI typically has its own header. 
-        # We might want to use the task's header or overlay our own.
-        # For now, we trust the Task TUI structure.
-        
+        # TUI.compose_view returns Header (dock top) and Content (1fr)
         yield from self.tui.compose_view()
         
-        # Log Output
+        # Log Output at Bottom
         log_widget = RichLog(id="log-output", highlight=True, markup=True)
-        log_widget.styles.height = self.log_lines + 2 # +2 for borders
+        # Calculate height: lines + 2 for borders
+        log_widget.styles.height = self.log_lines + 2
         yield log_widget
 
     def on_mount(self) -> None:
@@ -57,8 +53,11 @@ class VisualTrainApp(App):
         self.call_from_thread(self.write_log, message)
 
     def write_log(self, message):
-        log_widget = self.query_one("#log-output", RichLog)
-        log_widget.write(message)
+        try:
+            log_widget = self.query_one("#log-output", RichLog)
+            log_widget.write(message)
+        except Exception:
+            pass
 
     def update_task_view(self, state, info):
         self.call_from_thread(self.tui.update_state, state, info)

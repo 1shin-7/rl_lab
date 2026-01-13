@@ -28,39 +28,45 @@ class VisualInferenceApp(App):
     }
     """
     
-    BINDINGS = [("q", "quit", "Quit")]
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("ctrl+c", "quit", "Quit")
+    ]
 
     def __init__(self, task_name: str, weight_path: str = None, **kwargs):
         super().__init__(**kwargs)
         self.task_name = task_name
         self.weight_path = weight_path
         
-        # FIX: Rename task -> rl_task to avoid conflict with textual.App.task
         self.rl_task = get_task(task_name)
         self.tui = self.rl_task.render()
-        
-        # We can update the task header directly
+        self._worker = None
 
     def compose(self) -> ComposeResult:
-        # Task TUI provides Header (dock top) + Content (1fr)
         yield from self.tui.compose_view()
-        
         yield Label("", id="log-line")
         yield Footer()
 
     def on_mount(self) -> None:
-        # Redirect loguru
         logger.remove()
         logger.add(self.sink_log, format="{message}")
         
-        # Check device and log it instead of showing in header
         device = "CUDA" if torch.cuda.is_available() else "CPU"
         logger.info(f"Inference Device: {device}")
         
-        self.run_worker(self.simulation_loop, exclusive=True, thread=True)
+        self._worker = self.run_worker(self.simulation_loop, exclusive=True, thread=True)
+
+    def action_quit(self) -> None:
+        if self._worker:
+            self._worker.cancel()
+        self.exit()
 
     def sink_log(self, message):
-        self.call_from_thread(self.update_log, message)
+        try:
+            if self.is_running:
+                self.call_from_thread(self.update_log, message)
+        except RuntimeError:
+            pass
 
     def update_log(self, message):
         try:
@@ -72,7 +78,7 @@ class VisualInferenceApp(App):
         worker = get_current_worker()
         
         try:
-            env = self.rl_task.env # Use the task's persistent env
+            env = self.rl_task.env 
             config = self.rl_task.config
             
             agent = BaseDQNAgent(self.rl_task.state_size, self.rl_task.action_size, config, model_factory=self.rl_task.create_model)
@@ -102,9 +108,11 @@ class VisualInferenceApp(App):
                 while not done and not worker.is_cancelled:
                     step += 1
                     
-                    # Update UI
-                    self.call_from_thread(self.tui.update_state, raw_state, info)
-                    self.call_from_thread(self.tui.update_stats, episode, step, total_reward)
+                    try:
+                        self.call_from_thread(self.tui.update_state, raw_state, info)
+                        self.call_from_thread(self.tui.update_stats, episode, step, total_reward)
+                    except RuntimeError:
+                        pass # App closing
                     
                     action = agent.act(state, training=use_random_policy)
                     
@@ -117,9 +125,15 @@ class VisualInferenceApp(App):
                     
                     time.sleep(0.05) 
                 
+                if worker.is_cancelled:
+                    break
+                    
                 logger.info(f"Episode {episode} finished. Total Reward: {total_reward}")
                 time.sleep(0.5)
             
         except Exception as e:
             logger.error(f"Error: {e}")
             time.sleep(5)
+        
+        if not worker.is_cancelled:
+            self.call_from_thread(self.exit)

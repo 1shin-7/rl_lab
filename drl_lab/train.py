@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Union, Any, Dict, Protocol
+from typing import Optional, Union, Any, Dict, Protocol, Callable
 from loguru import logger
 
 from .utils import PlotRenderer
@@ -20,12 +20,14 @@ class Trainer:
         task_name: str, 
         output_path: Optional[Union[str, Path]] = None, 
         episodes: Optional[int] = None,
-        callbacks: Optional[TrainingCallbacks] = None
+        callbacks: Optional[TrainingCallbacks] = None,
+        should_stop: Optional[Callable[[], bool]] = None
     ):
         self.task_name = task_name
         self.output_path = Path(output_path) if output_path else None
         self.episodes_override = episodes
         self.callbacks = callbacks
+        self.should_stop = should_stop or (lambda: False)
         
         self.task: BaseTask = get_task(task_name)
         self._setup_config()
@@ -97,7 +99,7 @@ class Trainer:
         if self.callbacks:
             self.callbacks.on_step(steps, raw_state, info)
         
-        while not done:
+        while not done and not self.should_stop():
             steps += 1
             action = self.agent.act(state, training=True)
             
@@ -171,7 +173,16 @@ class Trainer:
 
         try:
             for e in range(self.config.episodes):
+                if self.should_stop():
+                    logger.warning("Training stop signal received.")
+                    break
+                    
                 reward, steps = self._run_episode(e)
+                
+                # If stopped mid-episode, don't update state or log
+                if self.should_stop():
+                    break
+                    
                 self._update_agent_state(e)
                 self._log_and_save(e, steps, reward)
         except KeyboardInterrupt:

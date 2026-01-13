@@ -1,5 +1,6 @@
 from textual.app import App, ComposeResult
 from textual.widgets import RichLog
+from textual.worker import get_current_worker
 from loguru import logger
 import torch
 from typing import Any, Dict
@@ -12,13 +13,19 @@ class TrainingAppCallback(TrainingCallbacks):
         self.app = app
 
     def on_step(self, step: int, state: Any, info: Dict[str, Any]) -> None:
-        self.app.update_task_view(state, info)
+        if self.app.is_running:
+            self.app.update_task_view(state, info)
 
     def on_episode_end(self, episode: int, steps: int, reward: float) -> None:
-        self.app.update_header(episode, steps, reward)
+        if self.app.is_running:
+            self.app.update_header(episode, steps, reward)
 
 class VisualTrainApp(App):
     CSS_PATH = "training.tcss"
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("ctrl+c", "quit", "Quit")
+    ]
 
     def __init__(self, task_name: str, episodes: int, output_path: str = None, log_lines: int = 5):
         super().__init__()
@@ -27,20 +34,16 @@ class VisualTrainApp(App):
         self.output_path = output_path
         self.log_lines = log_lines
         
-        # FIX: Rename task -> rl_task to avoid conflict with textual.App.task
         self.rl_task = get_task(task_name)
         self.tui = self.rl_task.render()
+        self._worker = None
 
     def compose(self) -> ComposeResult:
-        # Mount Task TUI (Header + Content)
         yield from self.tui.compose_view()
         
-        # Log Output at Bottom
         log_widget = RichLog(id="log-output", highlight=True, markup=True)
         log_widget.border_title = "Training Logs"
         
-        # Explicitly force height. "auto" in CSS might be overriding or defaulting poorly.
-        # We set min/max height too to be sure.
         h = self.log_lines + 2
         log_widget.styles.height = h
         log_widget.styles.min_height = h
@@ -49,19 +52,28 @@ class VisualTrainApp(App):
         yield log_widget
 
     def on_mount(self) -> None:
-        # Redirect loguru
         logger.remove()
         logger.add(self.sink_log, format="{time:HH:mm:ss} | {level} | {message}")
         
-        # Update device info
         device = "CUDA" if torch.cuda.is_available() else "CPU"
         self.tui.header.device = device
 
-        # Start training in background
-        self.run_worker(self.training_loop, exclusive=True, thread=True)
+        self._worker = self.run_worker(self.training_loop, exclusive=True, thread=True)
+
+    def action_quit(self) -> None:
+        """Handle quit request gracefully."""
+        if self._worker:
+            self._worker.cancel()
+        self.exit()
 
     def sink_log(self, message):
-        self.call_from_thread(self.write_log, message)
+        """Safely sink logs to the main thread."""
+        try:
+            if self.is_running:
+                self.call_from_thread(self.write_log, message)
+        except RuntimeError:
+            # App is closing or closed, ignore log
+            pass
 
     def write_log(self, message):
         try:
@@ -71,18 +83,32 @@ class VisualTrainApp(App):
             pass
 
     def update_task_view(self, state, info):
-        self.call_from_thread(self.tui.update_state, state, info)
+        try:
+            self.call_from_thread(self.tui.update_state, state, info)
+        except RuntimeError:
+            pass
 
     def update_header(self, episode, steps, reward):
-        self.call_from_thread(self.tui.update_stats, episode, steps, reward)
+        try:
+            self.call_from_thread(self.tui.update_stats, episode, steps, reward)
+        except RuntimeError:
+            pass
 
     def training_loop(self):
+        worker = get_current_worker()
         callbacks = TrainingAppCallback(self)
+        
         trainer = Trainer(
             task_name=self.task_name, 
             episodes=self.episodes, 
             output_path=self.output_path,
-            callbacks=callbacks
+            callbacks=callbacks,
+            should_stop=lambda: worker.is_cancelled
         )
+        
+        # We don't catch exceptions here, let them bubble or handle inside trainer
         trainer.run()
-        self.exit()
+        
+        # Only exit if we finished naturally, not if we are being cancelled
+        if not worker.is_cancelled:
+            self.call_from_thread(self.exit)

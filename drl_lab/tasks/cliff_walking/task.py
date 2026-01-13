@@ -5,7 +5,7 @@ from typing import Any
 
 from ..base import BaseTask
 from ..visual import BaseTaskTUI
-from ...models import SimpleMLP
+from ...models import DuelingMLP
 from .tui import CliffWalkingTUI
 
 class CliffWalkingTask(BaseTask):
@@ -29,8 +29,7 @@ class CliffWalkingTask(BaseTask):
         return self._action_size
 
     def create_model(self) -> nn.Module:
-        # State is one-hot (48), generic MLP is fine
-        return SimpleMLP(self.state_size, self.action_size)
+        return DuelingMLP(self.state_size, self.action_size)
 
     def preprocess_state(self, state: Any) -> Any:
         if isinstance(state, (np.ndarray, list)):

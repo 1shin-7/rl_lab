@@ -12,18 +12,7 @@ from .utils import Config
 class BaseDQNAgent:
     """
     Base Deep Q-Network Agent.
-    
-    Attributes:
-        state_size (int): Dimension of the state space.
-        action_size (int): Dimension of the action space.
-        config (Config): Configuration object containing hyperparameters.
-        device (torch.device): Computation device (CPU or CUDA).
-        memory (deque): Replay memory buffer.
-        epsilon (float): Current exploration rate.
-        model (nn.Module): The policy network.
-        target_model (nn.Module): The target network for stable Q-learning.
-        optimizer (optim.Optimizer): The optimizer for training the model.
-        loss_fn (nn.Module): The loss function (MSE).
+    Implements Double DQN (DDQN) logic by default for better stability.
     """
 
     def __init__(
@@ -38,7 +27,6 @@ class BaseDQNAgent:
         self.config = config
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # Logger is handled by the caller/trainer mostly, but we log device here
         logger.debug(f"Agent initialized on device: {self.device}")
 
         self.memory: deque = deque(maxlen=config.memory_size)
@@ -50,7 +38,9 @@ class BaseDQNAgent:
         self.update_target_model()
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=config.learning_rate)
-        self.loss_fn = nn.MSELoss()
+        
+        # Use Huber Loss (SmoothL1Loss) for stability against outliers
+        self.loss_fn = nn.SmoothL1Loss()
 
     def update_target_model(self) -> None:
         """Transfer weights from the policy model to the target model."""
@@ -70,13 +60,6 @@ class BaseDQNAgent:
     def act(self, state: Union[np.ndarray, list], training: bool = True) -> int:
         """
         Select an action using an epsilon-greedy policy if training, otherwise greedy.
-        
-        Args:
-            state: The current state.
-            training: Whether the agent is in training mode (enables epsilon-greedy).
-        
-        Returns:
-            int: The selected action index.
         """
         if training and np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
@@ -98,9 +81,7 @@ class BaseDQNAgent:
     def replay(self) -> float:
         """
         Sample a batch from memory and train the network.
-        
-        Returns:
-            float: The loss value of the training step, or 0.0 if not enough memory.
+        Implements Double DQN update rule.
         """
         if len(self.memory) < self.config.train_start_size:
             return 0.0
@@ -121,14 +102,19 @@ class BaseDQNAgent:
         next_states_t = torch.FloatTensor(next_states).to(self.device)
         dones_t = torch.FloatTensor(dones).unsqueeze(1).to(self.device) 
 
-        # 1. Predicted Q values
+        # 1. Predicted Q values (Current State)
         current_q_values = self.model(states_t).gather(1, actions_t)
 
-        # 2. Target Q values
+        # 2. Target Q values (Next State)
         with torch.no_grad():
-            # Double DQN could be implemented here (using model for selection, target for evaluation)
-            # For now, standard DQN:
-            next_q_values = self.target_model(next_states_t).max(1)[0].unsqueeze(1)
+            # Double DQN Logic:
+            # a) Select best action using Online Model
+            next_actions = self.model(next_states_t).argmax(1, keepdim=True)
+            
+            # b) Evaluate that action using Target Model
+            next_q_values = self.target_model(next_states_t).gather(1, next_actions)
+            
+            # Compute Target
             target_q_values = rewards_t + (self.config.gamma * next_q_values * (1.0 - dones_t))
 
         # 3. Loss & Optimization
@@ -136,6 +122,10 @@ class BaseDQNAgent:
 
         self.optimizer.zero_grad()
         loss.backward()
+        
+        # Optional: Gradient Clipping to further stabilize training
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+        
         self.optimizer.step()
             
         return loss.item()

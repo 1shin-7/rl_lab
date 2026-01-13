@@ -68,7 +68,8 @@ uv run rlab clean cartpole
 
 ## 📚 Documentation
 
-*   [Developer Guide](docs/dev.md): Learn how to add new tasks and customize the TUI.
+*   [Development Overview](docs/development/task.md): Architecture, Tasks, and Hooks.
+*   [TUI Guide](docs/development/tui.md): Visualization and UI design.
 *   [CLI Reference](docs/commands.md): Detailed documentation for all CLI commands.
 
 ## 🤝 Credits

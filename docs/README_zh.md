@@ -66,7 +66,8 @@ uv run rlab clean cartpole
 
 ## 📚 文档
 
-*   [开发指南 (Developer Guide)](dev.md): 了解如何添加新任务和自定义 TUI。
+*   [开发概述 (Task & Hooks)](development/task.md): 了解架构、任务定义与钩子机制。
+*   [TUI 指南](development/tui.md): 可视化设计与 UI 开发。
 *   [命令参考 (CLI Reference)](commands.md): 所有 CLI 命令的详细说明。
 
 ## 🤝 致谢 (Credits)

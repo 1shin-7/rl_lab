@@ -1,6 +1,8 @@
 import click
+from loguru import logger
 from ..train import Trainer
 from .visual import VisualTrainApp
+from ..utils import setup_logger
 
 @click.command(name="train")
 @click.argument('task', default='cliff_walking')
@@ -13,6 +15,14 @@ def train_cmd(task, episodes, output, visual, visual_logs):
     if visual:
         app = VisualTrainApp(task_name=task, episodes=episodes, output_path=output, log_lines=visual_logs)
         app.run()
+        
+        # Restore logger for terminal output using unified config
+        setup_logger()
+        
+        # Replay recent logs
+        if app.recent_records:
+            for record in app.recent_records:
+                logger.log(record["level"].name, record["message"])
     else:
         trainer = Trainer(task, output, episodes)
         trainer.run()

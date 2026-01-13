@@ -4,9 +4,11 @@ from textual.worker import get_current_worker
 from loguru import logger
 import torch
 import time
+from rich.text import Text
 
 from ...tasks import get_task
 from ...agent import BaseDQNAgent
+from ...utils import setup_logger
 
 class VisualInferenceApp(App):
     CSS = """
@@ -48,8 +50,7 @@ class VisualInferenceApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        logger.remove()
-        logger.add(self.sink_log, format="{message}")
+        setup_logger(sink=self.sink_log)
         
         device = "CUDA" if torch.cuda.is_available() else "CPU"
         logger.info(f"Inference Device: {device}")
@@ -62,15 +63,34 @@ class VisualInferenceApp(App):
         self.exit()
 
     def sink_log(self, message):
+        """Structured sink."""
+        record = message.record
         try:
             if self.is_running:
-                self.call_from_thread(self.update_log, message)
+                self.call_from_thread(self.update_log, record)
         except RuntimeError:
             pass
 
-    def update_log(self, message):
+    def update_log(self, record):
         try:
-            self.query_one("#log-line", Label).update(message.strip())
+            level_name = record["level"].name
+            msg_text = record["message"]
+            
+            level_color = "white"
+            if level_name == "INFO": 
+                level_color = "magenta"
+            elif level_name == "WARNING": 
+                level_color = "yellow"
+            elif level_name == "ERROR": 
+                level_color = "red"
+            elif level_name == "SUCCESS": 
+                level_color = "green"
+            
+            text = Text()
+            text.append(f"{level_name:<7}", style=f"bold {level_color}")
+            text.append(f" | {msg_text}")
+            
+            self.query_one("#log-line", Label).update(text)
         except Exception:
             pass
 
@@ -112,7 +132,7 @@ class VisualInferenceApp(App):
                         self.call_from_thread(self.tui.update_state, raw_state, info)
                         self.call_from_thread(self.tui.update_stats, episode, step, total_reward)
                     except RuntimeError:
-                        pass # App closing
+                        pass 
                     
                     action = agent.act(state, training=use_random_policy)
                     

@@ -1,23 +1,28 @@
 import sys
 from loguru import logger
+from typing import Optional, Any
 
-def setup_logger(debug: bool = False, log_file: str = "app.log"):
+# A unified format: color only the level tag, message remains default
+DEFAULT_FORMAT = "<green>{time:HH:mm:ss}</green> | <level>{level: <7}</level> | {message}"
+
+def setup_logger(debug: bool = False, sink: Optional[Any] = None):
+    """
+    Configures the global logger.
+    """
     logger.remove()
     level = "DEBUG" if debug else "INFO"
     
-    # Console handler
-    logger.add(
-        sys.stderr,
-        level=level,
-        format="<green>{time:HH:mm:ss}</green> | <level>{level: <7}</level> | <level>{message}</level>"
-    )
+    # Customize INFO color to a nice Purple/Magenta
+    logger.level("INFO", color="<bold><magenta>")
     
-    # File handler
+    if sink is None:
+        sink = sys.stderr
+        
     logger.add(
-        log_file,
-        rotation="10 MB",
-        level="DEBUG",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"
+        sink,
+        level=level,
+        format=DEFAULT_FORMAT,
+        colorize=True
     )
 
 def get_logger():

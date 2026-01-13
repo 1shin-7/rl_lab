@@ -1,13 +1,13 @@
 import click
-from pathlib import Path
 from loguru import logger
+from ..utils import paths
 
 @click.command(name="clean")
 @click.argument('task_name', required=False)
 @click.option('--all', 'clean_all', is_flag=True, help="Clean all files in outputs directory.")
 def clean_cmd(task_name, clean_all):
     """Clean model and plot files. Specify TASK_NAME or use --all."""
-    output_dir = Path("outputs")
+    output_dir = paths.OUTPUTS_DIR
     if not output_dir.exists():
         logger.warning(f"Output directory '{output_dir}' does not exist.")
         return
@@ -21,10 +21,10 @@ def clean_cmd(task_name, clean_all):
             logger.info("Outputs directory is already empty.")
             return
     elif task_name:
-        # Specific task files
+        # Specific task files using centralized path logic
         files_to_remove = [
-            output_dir / f"{task_name}.pth",
-            output_dir / f"{task_name}.png",
+            paths.get_model_path(task_name),
+            paths.get_plot_path(task_name),
         ]
     else:
         logger.error("Please specify a TASK_NAME or use --all.")

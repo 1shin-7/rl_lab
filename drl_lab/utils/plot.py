@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from loguru import logger
 import numpy as np
+from . import paths
 
 class PlotRenderer:
     def __init__(self, task_name: str, filepath: Path):
@@ -33,8 +34,8 @@ class PlotRenderer:
             plt.legend()
             plt.grid(True)
             
-            # Ensure parent directory exists
-            self.filepath.parent.mkdir(parents=True, exist_ok=True)
+            # Ensure parent directory exists using centralized utils
+            paths.ensure_dir(self.filepath)
             
             plt.savefig(self.filepath)
             plt.close()

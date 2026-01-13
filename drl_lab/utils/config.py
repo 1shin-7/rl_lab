@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from . import paths
 
 @dataclass
 class Config:
@@ -14,7 +15,8 @@ class Config:
     target_update_freq: int = 10
     episodes: int = 500  # CartPole-v1 is solved at 475 avg reward
     max_steps: int = 200 # Force end episode if taking too long
-    model_path: str = "outputs/dqn_cartpole_model.pth"
-    plot_path: str = "outputs/training_plot.png"
-    log_file: str = "outputs/training.log"
+    # Default paths using centralized utils
+    model_path: str = str(paths.get_model_path("dqn_cartpole_model"))
+    plot_path: str = str(paths.get_plot_path("training_plot"))
+    log_file: str = str(paths.OUTPUTS_DIR / "training.log")
     render_mode: str = None # Set to 'human' for visualization during inference

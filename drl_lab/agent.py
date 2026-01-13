@@ -7,7 +7,7 @@ from collections import deque
 from loguru import logger
 from typing import Callable, Union
 from pathlib import Path
-from .utils import Config
+from .utils import Config, paths
 
 class BaseDQNAgent:
     """
@@ -144,6 +144,8 @@ class BaseDQNAgent:
     def save(self, path: Union[str, Path]) -> None:
         """Save model weights to a file."""
         path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # Use centralized path util to ensure directory exists
+        paths.ensure_dir(path)
+        
         logger.info(f"Saving model to {path}")
         torch.save(self.model.state_dict(), path)

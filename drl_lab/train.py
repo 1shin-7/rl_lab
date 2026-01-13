@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional, Union, Any, Dict, Protocol, Callable
 from loguru import logger
 
-from .utils import PlotRenderer
+from .utils import PlotRenderer, paths
 from .agent import BaseDQNAgent
 from .tasks import get_task, BaseTask
 
@@ -45,19 +45,10 @@ class Trainer:
         self.config = self.task.config
 
     def _setup_paths(self) -> None:
-        """Configures model and plot paths using pathlib."""
-        if self.output_path:
-            self.config.model_path = str(self.output_path)
-            if self.output_path.suffix == ".pth":
-                 self.config.plot_path = str(self.output_path.with_suffix(".png"))
-            else:
-                 self.config.plot_path = str(self.output_path.with_name(self.output_path.name + ".png"))
-        else:
-            # Default directory structure
-            output_dir = Path("outputs")
-            output_dir.mkdir(parents=True, exist_ok=True)
-            self.config.model_path = str(output_dir / f"{self.task_name}.pth")
-            self.config.plot_path = str(output_dir / f"{self.task_name}.png")
+        """Configures model and plot paths using centralized path utilities."""
+        model_path, plot_path = paths.resolve_task_paths(self.task_name, self.output_path)
+        self.config.model_path = str(model_path)
+        self.config.plot_path = str(plot_path)
 
     def _initialize(self) -> None:
         """Initializes the agent, environment, and resources."""

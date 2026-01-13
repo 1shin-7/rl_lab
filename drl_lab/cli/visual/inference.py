@@ -128,20 +128,22 @@ class VisualInferenceApp(App):
                 while not done and not worker.is_cancelled:
                     step += 1
                     
+                    action = agent.act(state, training=use_random_policy)
+                    
+                    next_state, reward, terminated, truncated, info = env.step(action)
+                    total_reward += reward
+                    
                     try:
                         self.call_from_thread(self.tui.update_state, raw_state, info)
+                        # Real-time update stats
                         self.call_from_thread(self.tui.update_stats, episode, step, total_reward)
                     except RuntimeError:
                         pass 
                     
-                    action = agent.act(state, training=use_random_policy)
-                    
-                    next_state, reward, terminated, truncated, info = env.step(action)
                     done = terminated or truncated
                     
                     raw_state = next_state
                     state = self.rl_task.preprocess_state(next_state)
-                    total_reward += reward
                     
                     time.sleep(0.05) 
                 

@@ -3,7 +3,6 @@ from textual.widgets import RichLog
 from textual.worker import get_current_worker
 from loguru import logger
 import torch
-import time
 from typing import Any, Dict
 from collections import deque
 from rich.text import Text
@@ -15,12 +14,17 @@ from ...utils import setup_logger
 class TrainingAppCallback(TrainingCallbacks):
     def __init__(self, app: "VisualTrainApp"):
         self.app = app
+        self._current_episode = 0
 
-    def on_step(self, step: int, state: Any, info: Dict[str, Any]) -> None:
+    def on_step(self, step: int, state: Any, reward: float, info: Dict[str, Any]) -> None:
         if self.app.is_running:
             self.app.update_task_view(state, info)
+            # Real-time update of header stats
+            self.app.update_header(self._current_episode, step, reward)
 
     def on_episode_end(self, episode: int, steps: int, reward: float) -> None:
+        # Increment episode count for next run
+        self._current_episode = episode + 1
         if self.app.is_running:
             self.app.update_header(episode, steps, reward)
 

@@ -7,7 +7,7 @@ from .agent import BaseDQNAgent
 from .tasks import get_task, BaseTask
 
 class TrainingCallbacks(Protocol):
-    def on_step(self, step: int, state: Any, info: Dict[str, Any]) -> None: ...
+    def on_step(self, step: int, state: Any, reward: float, info: Dict[str, Any]) -> None: ...
     def on_episode_end(self, episode: int, steps: int, reward: float) -> None: ...
 
 class Trainer:
@@ -97,28 +97,28 @@ class Trainer:
         
         # Initial callback
         if self.callbacks:
-            self.callbacks.on_step(steps, raw_state, info)
+            self.callbacks.on_step(steps, raw_state, total_reward, info)
         
         while not done and not self.should_stop():
             steps += 1
             action = self.agent.act(state, training=True)
             
             next_state, reward, terminated, truncated, info = self.task.env.step(action)
+            total_reward += reward
             
             # Enforce max steps
             if steps >= self.config.max_steps:
                 truncated = True
             
-            # Callback update
+            # Callback update with real-time reward
             if self.callbacks:
-                self.callbacks.on_step(steps, next_state, info)
+                self.callbacks.on_step(steps, next_state, total_reward, info)
 
             next_state_pre = self.task.preprocess_state(next_state)
             done = terminated or truncated
             
             self.agent.remember(state, action, reward, next_state_pre, done)
             state = next_state_pre
-            total_reward += reward
             
             self.agent.replay()
         

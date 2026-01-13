@@ -3,7 +3,7 @@ CartPoleWidget {
     width: 62; /* 60 chars width + padding */
     height: 14; /* 10 chars height + text + padding */
     align: center middle;
-    border: heavy $accent;
+    border: round $accent;
     background: transparent; /* Use terminal default */
     color: $text;
 }

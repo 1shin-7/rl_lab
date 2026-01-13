@@ -12,9 +12,9 @@ Screen {
 
 RichLog {
     width: 100%;
+    /* Height is set dynamically */
     dock: bottom;
-    border: solid $accent;
+    border: round $accent;
     background: $surface;
     color: $text;
-    /* Height is controlled by Python */
 }
